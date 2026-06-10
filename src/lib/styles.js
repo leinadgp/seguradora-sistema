@@ -1,0 +1,5 @@
+export const input    = 'w-full px-3 py-2 text-sm border border-cyber-border rounded-lg bg-cyber-surface text-cyber-text placeholder:text-cyber-muted focus:outline-none focus:ring-2 focus:ring-cyber-cyan/20 focus:border-cyber-cyan/50 transition-colors duration-150'
+export const inputErr = 'w-full px-3 py-2 text-sm border border-cyber-red/50 rounded-lg bg-cyber-surface text-cyber-text placeholder:text-cyber-muted focus:outline-none focus:ring-2 focus:ring-cyber-red/20 focus:border-cyber-red/50 transition-colors duration-150'
+export const label    = 'text-[10px] font-semibold text-cyber-muted mb-1 block uppercase tracking-widest'
+export const cardCls  = 'glass rounded-2xl'
+export const sectionTitle = 'text-xs font-display font-bold text-cyber-text tracking-wide uppercase'
