@@ -14,10 +14,12 @@ import {
   fmtMoeda, todayISO, genNumero, logEvento, CURRENT_USER,
   cotacaoStatus, cotacaoStatusList, cotacaoKanbanList, tiposSeguro, responsaveis, seguradorasLista,
 } from '../lib/flow'
+import { useCatalogo } from '../hooks/useCatalogo'
 
 const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', email: '',
-  tipoSeguro: 'Auto', seguradora: 'Porto Seguro', produto: '',
+  tipoSeguro: 'Auto', subcategoria: '', ramo: '',
+  seguradora: 'Porto Seguro', produto: '',
   valorEstimado: '', premio: '', percentualComissao: '15', comissao: '',
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
 }
@@ -46,6 +48,7 @@ export default function Cotacoes() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [convertConfirm, setConvertConfirm] = useState(null) // { cot } para confirmar gerar proposta
+  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -335,9 +338,22 @@ export default function Cotacoes() {
           </Section>
           <Section title="Dados do Seguro">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FF label="Tipo de seguro"><select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value }))} className={inputCls}>{tiposSeguro.map(t => <option key={t}>{t}</option>)}</select></FF>
+              <FF label="Tipo de seguro">
+                <select value={form.tipoSeguro} onChange={e => {
+                  const subs = getSubcategorias(e.target.value)
+                  setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategoria: subs[0]?.nome || '', ramo: getRamo(e.target.value) }))
+                }} className={inputCls}>
+                  {getTipos(['seguro', 'saude', 'previdencia']).map(t => <option key={t}>{t}</option>)}
+                </select>
+              </FF>
+              <FF label="Subcategoria">
+                <select value={form.subcategoria || ''} onChange={e => setForm(f => ({ ...f, subcategoria: e.target.value }))} className={inputCls}>
+                  <option value="">— Todas —</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                </select>
+              </FF>
               <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}>{seguradorasLista.map(s => <option key={s}>{s}</option>)}</select></FF>
-              <FF label="Produto" span><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>
+              <FF label="Produto"><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>
             </div>
           </Section>
           <Section title="Valores">

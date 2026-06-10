@@ -14,8 +14,7 @@ import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { insuranceTypeFields } from '../data/insuranceFields'
 import { genNumero, logEvento, todayISO, propostaStatus, propostaKanbanList, propostaStatusList } from '../lib/flow'
-
-const tiposSeguros = ['Auto', 'Moto', 'Caminhão', 'Frota', 'Residencial', 'Condomínio', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Odontológico', 'Viagem', 'Equipamentos', 'Celular', 'Rural', 'Náutico', 'Garantia', 'Fiança', 'RC', 'Previdência', 'Consórcio']
+import { useCatalogo } from '../hooks/useCatalogo'
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves']
 const todas_seguradoras = ['Porto Seguro', 'Tokio Marine', 'Azul Seguros', 'Liberty Seguros', 'Mapfre', 'SulAmérica', 'Bradesco Seguros', 'Allianz']
 const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto', 'PIX', '1x no cartão', '3x no cartão', '6x no cartão', '10x no cartão', '12x no cartão']
@@ -23,7 +22,8 @@ const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto',
 const ABAS = ['Dados Gerais', 'Dados do Seguro', 'Valores', 'Observações']
 
 const emptyForm = {
-  cliente: '', tipoSeguro: 'Auto', seguradorasCotadas: [], melhorValor: '', valorApresentado: '',
+  cliente: '', tipoSeguro: 'Auto', subcategoria: '', ramo: '',
+  seguradorasCotadas: [], melhorValor: '', valorApresentado: '',
   formaPagamento: '12x no cartão', responsavel: 'Carlos Silva', dataSolicitacao: '',
   dataEnvio: '', dataPrevRetorno: '', status: 'em_analise', motivoPerda: '', observacoes: '',
 }
@@ -51,6 +51,7 @@ export default function Propostas() {
   const [isEditing, setIsEditing] = useState(false)
   const [showConvertir, setShowConvertir] = useState(false)
   const [aba, setAba] = useState(0)
+  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -383,8 +384,18 @@ export default function Propostas() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="hud-label mb-1">Tipo de seguro *</label>
-                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value }))} className={inputCls}>
-                  {tiposSeguros.map(t => <option key={t}>{t}</option>)}
+                <select value={form.tipoSeguro} onChange={e => {
+                  const subs = getSubcategorias(e.target.value)
+                  setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategoria: subs[0]?.nome || '', ramo: getRamo(e.target.value) }))
+                }} className={inputCls}>
+                  {getTipos(['seguro', 'saude', 'previdencia']).map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Subcategoria</label>
+                <select value={form.subcategoria || ''} onChange={e => setForm(f => ({ ...f, subcategoria: e.target.value }))} className={inputCls}>
+                  <option value="">— Todas —</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                 </select>
               </div>
               <div>

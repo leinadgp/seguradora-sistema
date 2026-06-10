@@ -10,6 +10,7 @@ import {
   produtos, producaoMensal, alertas, endossos, produtores, corretoras,
   cotacoes, historico,
 } from './src/data/mockData.js'
+import { catalogoSeguros } from './src/data/catalogoSeguros.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const db = new Database(path.join(__dirname, 'seguradora.db'))
@@ -23,6 +24,7 @@ const ENTITIES = {
   comissoes, sinistros, assistencias, documentos, tarefas,
   produtos, producaoMensal, alertas, endossos, produtores, corretoras,
   cotacoes, historico,
+  seguros_catalogo: catalogoSeguros,
 }
 
 // Create tables and seed on first run

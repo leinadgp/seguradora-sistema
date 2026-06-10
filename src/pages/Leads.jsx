@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/ui/Badge'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { genNumero, todayISO } from '../lib/flow'
+import { useCatalogo } from '../hooks/useCatalogo'
 
 const COLUNAS = [
   { key: 'novo', label: 'Novo', cor: 'bg-cyber-surface text-cyber-muted' },
@@ -25,10 +26,11 @@ const FASES_FINAIS = [
 
 const tempCor = { quente: 'bg-cyber-red glow-red', morno: 'bg-cyber-amber', frio: 'bg-cyber-cyan' }
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
-const tiposSeguros = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida', 'Saúde', 'Frota', 'Rural', 'Viagem']
+// Lista mantida apenas como referência; selects usam useCatalogo()
+const tiposSeguros = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Frota', 'Rural', 'Viagem']
 const origens = ['Site', 'Indicação', 'Redes Sociais', 'WhatsApp', 'Prospecção', 'Facebook Ads', 'Google Ads']
 
-const emptyForm = { nome: '', telefone: '', whatsapp: '', email: '', cidade: '', estado: 'SP', tipoSeguro: 'Auto', origem: 'Site', campanha: '', responsavel: 'Carlos Silva', status: 'novo', temperatura: 'morno', valorEstimado: '', proximaAcao: '', observacoes: '' }
+const emptyForm = { nome: '', telefone: '', whatsapp: '', email: '', cidade: '', estado: 'SP', tipoSeguro: 'Auto', subcategoria: '', origem: 'Site', campanha: '', responsavel: 'Carlos Silva', status: 'novo', temperatura: 'morno', valorEstimado: '', proximaAcao: '', observacoes: '' }
 
 export default function Leads() {
   const { showToast } = useApp()
@@ -43,6 +45,7 @@ export default function Leads() {
   const [isEditing, setIsEditing] = useState(false)
   const [showPerdidos, setShowPerdidos] = useState(false)
   const [dragId, setDragId] = useState(null)
+  const { getTipos, getSubcategorias } = useCatalogo()
   const [dragOver, setDragOver] = useState(null)
   const scrollRef = useRef(null)
   const scrollState = useRef({ dragging: false, startX: 0, scrollLeft: 0 })
@@ -363,8 +366,18 @@ export default function Leads() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="hud-label mb-1">Tipo de Seguro</label>
-              <select value={form.tipoSeguro} onChange={e => setForm(p => ({ ...p, tipoSeguro: e.target.value }))} className={inputCls}>
-                {tiposSeguros.map(t => <option key={t}>{t}</option>)}
+              <select value={form.tipoSeguro} onChange={e => {
+                const subs = getSubcategorias(e.target.value)
+                setForm(p => ({ ...p, tipoSeguro: e.target.value, subcategoria: subs[0]?.nome || '' }))
+              }} className={inputCls}>
+                {getTipos().map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="hud-label mb-1">Subcategoria</label>
+              <select value={form.subcategoria || ''} onChange={e => setForm(p => ({ ...p, subcategoria: e.target.value }))} className={inputCls}>
+                <option value="">— Todas —</option>
+                {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
               </select>
             </div>
             <div>

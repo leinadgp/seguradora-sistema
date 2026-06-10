@@ -13,8 +13,7 @@ import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { insuranceTypeFields } from '../data/insuranceFields'
 import { logEvento } from '../lib/flow'
-
-const tiposSeguros = ['Auto', 'Moto', 'Caminhão', 'Frota', 'Residencial', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Odontológico', 'Viagem', 'Rural', 'RC Geral', 'Garantia']
+import { useCatalogo } from '../hooks/useCatalogo'
 const statusOpcoes = ['ativa', 'vencida', 'cancelada', 'em_renovacao', 'suspensa', 'aguardando_pagamento', 'aguardando_emissao']
 const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto', 'PIX']
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves']
@@ -23,7 +22,8 @@ const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves
 const ABAS_FORM = ['Dados Principais', 'Dados do Seguro', 'Coberturas', 'Financeiro', 'Observações', 'Anexos']
 
 const emptyForm = {
-  clienteId: '', cliente: '', tipoSeguro: 'Auto', seguradoraId: '', seguradora: '', numero: '', numeroProposta: '',
+  clienteId: '', cliente: '', tipoSeguro: 'Auto', subcategoria: '', ramo: '',
+  seguradoraId: '', seguradora: '', numero: '', numeroProposta: '',
   corretor: 'Carlos Silva', status: 'ativa', dataEmissao: '', inicioVigencia: '', fimVigencia: '', dataRenovacao: '', canal: 'Corretor',
   premioBruto: '', premioLiquido: '', formaPagamento: 'Boleto', parcelas: '12', valorParcela: '', vencimentoPrimeiraParcela: '',
   diaVencimento: '1', comissaoPercentual: '15', comissaoValor: '', statusComissao: 'prevista', observacoes: '', anexos: [],
@@ -76,6 +76,7 @@ export default function Apolices() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [abaForm, setAbaForm] = useState(0)
+  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
 
   const filtered = apolices.filter(a => {
     const q = search.toLowerCase()
@@ -382,8 +383,18 @@ export default function Apolices() {
               </div>
               <div>
                 <label className="hud-label mb-1">Tipo de Seguro *</label>
-                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value }))} className={inputCls}>
-                  {tiposSeguros.map(t => <option key={t}>{t}</option>)}
+                <select value={form.tipoSeguro} onChange={e => {
+                  const subs = getSubcategorias(e.target.value)
+                  setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategoria: subs[0]?.nome || '', ramo: getRamo(e.target.value) }))
+                }} className={inputCls}>
+                  {getTipos(['seguro', 'saude', 'previdencia']).map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Subcategoria</label>
+                <select value={form.subcategoria || ''} onChange={e => setForm(f => ({ ...f, subcategoria: e.target.value }))} className={inputCls}>
+                  <option value="">— Todas —</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                 </select>
               </div>
               <div>
