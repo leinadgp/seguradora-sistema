@@ -1,12 +1,12 @@
 ﻿import { useState } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Settings, Save, Building2, Shield, Bell, Users, CreditCard, Tag } from 'lucide-react'
+import { Settings, Save, Building2, Bell, Users, CreditCard, Tag } from 'lucide-react'
 import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
 
 const ABAS = [
   { key: 'corretora', label: 'Dados da Corretora', icon: <Building2 size={16} /> },
-  { key: 'produtos', label: 'Tipos de Seguro', icon: <Shield size={16} /> },
+
   { key: 'financeiro', label: 'Financeiro', icon: <CreditCard size={16} /> },
   { key: 'origens', label: 'Origens de Lead', icon: <Tag size={16} /> },
   { key: 'acesso', label: 'Perfis de Acesso', icon: <Users size={16} /> },
@@ -92,19 +92,6 @@ export default function Configuracoes() {
           </div>
         )}
 
-        {aba === 'produtos' && (
-          <div>
-            <h3 className="font-semibold text-cyber-text mb-4">Tipos de Seguro Habilitados</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {['Auto', 'Moto', 'Caminhão', 'Frota', 'Residencial', 'Condomínio', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Odontológico', 'Viagem', 'Equipamentos', 'Celular', 'Rural', 'Náutico', 'Garantia', 'Fiança', 'RC', 'Previdência', 'Consórcio'].map(p => (
-                <label key={p} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 cursor-pointer text-sm text-cyber-text/80">
-                  <input type="checkbox" defaultChecked className="rounded text-cyber-cyan" />
-                  {p}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
 
         {aba === 'financeiro' && (
           <div className="space-y-5">

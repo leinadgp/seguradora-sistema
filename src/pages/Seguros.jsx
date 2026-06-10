@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Shield, Edit2, Eye, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Layers, Tag } from 'lucide-react'
+import { Plus, Search, Shield, Edit2, Eye, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Layers, Tag, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
@@ -45,12 +45,21 @@ function CatalogoAdmin() {
   const [newSubNome, setNewSubNome] = useState('')
   const [newSubCobs, setNewSubCobs] = useState('')      // coberturas separadas por vírgula
   const [novoTipo, setNovoTipo] = useState(null)        // modal novo tipo
+  const [editSubModal, setEditSubModal] = useState(null) // { tipoId, subId }
+  const [editSubNome, setEditSubNome] = useState('')
+  const [editSubCobs, setEditSubCobs] = useState('')
 
   const emptyNovoTipo = { tipo: '', ramo: '', modulo: 'seguro', ordem: catalogo.length + 1, ativo: true, subcategorias: [] }
 
   function toggle(id) {
     setExpandido(prev => ({ ...prev, [id]: !prev[id] }))
   }
+
+  useEffect(() => {
+    if (catalogo.length > 0 && Object.keys(expandido).length === 0) {
+      setExpandido(Object.fromEntries(catalogo.map(c => [c.id, true])))
+    }
+  }, [catalogo.length]) // eslint-disable-line
 
   async function toggleAtivo(entrada) {
     try {
@@ -70,6 +79,40 @@ function CatalogoAdmin() {
       showToast('Subcategoria atualizada!')
     } catch {
       showToast('Erro ao atualizar.', 'error')
+    }
+  }
+
+  function abrirEditSub(entrada, sub) {
+    setEditSubModal({ tipoId: entrada.id, subId: sub.id })
+    setEditSubNome(sub.nome)
+    setEditSubCobs((sub.coberturas || []).join(', '))
+  }
+
+  async function salvarEdicaoSub() {
+    if (!editSubNome.trim()) { showToast('Informe o nome.', 'error'); return }
+    const entrada = catalogo.find(c => c.id === editSubModal.tipoId)
+    if (!entrada) return
+    const subs = (entrada.subcategorias || []).map(s =>
+      s.id === editSubModal.subId
+        ? { ...s, nome: editSubNome.trim(), coberturas: editSubCobs.split(',').map(x => x.trim()).filter(Boolean) }
+        : s
+    )
+    try {
+      await salvarEntrada({ ...entrada, subcategorias: subs })
+      showToast('Subcategoria atualizada!')
+      setEditSubModal(null)
+    } catch {
+      showToast('Erro ao salvar.', 'error')
+    }
+  }
+
+  async function excluirSubcategoria(entrada, subId) {
+    const subs = (entrada.subcategorias || []).filter(s => s.id !== subId)
+    try {
+      await salvarEntrada({ ...entrada, subcategorias: subs })
+      showToast('Subcategoria removida!')
+    } catch {
+      showToast('Erro ao remover.', 'error')
     }
   }
 
@@ -190,11 +233,19 @@ function CatalogoAdmin() {
                               </p>
                             )}
                           </div>
-                          <button onClick={() => toggleSubAtivo(entrada, sub.id)} className="shrink-0 mt-0.5 text-cyber-muted hover:text-cyber-cyan transition-colors">
-                            {sub.ativo !== false
-                              ? <ToggleRight size={18} className="text-cyber-cyan" />
-                              : <ToggleLeft size={18} />}
-                          </button>
+                          <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+                            <button onClick={() => abrirEditSub(entrada, sub)} title="Editar" className="p-1 text-cyber-muted hover:text-cyber-cyan transition-colors">
+                              <Edit2 size={13} />
+                            </button>
+                            <button onClick={() => excluirSubcategoria(entrada, sub.id)} title="Excluir" className="p-1 text-cyber-muted hover:text-cyber-red transition-colors">
+                              <Trash2 size={13} />
+                            </button>
+                            <button onClick={() => toggleSubAtivo(entrada, sub.id)} title={sub.ativo !== false ? 'Desativar' : 'Ativar'} className="p-1 text-cyber-muted hover:text-cyber-cyan transition-colors">
+                              {sub.ativo !== false
+                                ? <ToggleRight size={18} className="text-cyber-cyan" />
+                                : <ToggleLeft size={18} />}
+                            </button>
+                          </div>
                         </div>
                       ))}
                       <button
@@ -211,6 +262,16 @@ function CatalogoAdmin() {
           </div>
         </div>
       ))}
+
+      {/* Modal Editar Subcategoria */}
+      <Modal isOpen={!!editSubModal} onClose={() => setEditSubModal(null)} title="Editar Subcategoria" size="sm"
+        footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={() => setEditSubModal(null)}>Cancelar</Button><Button onClick={salvarEdicaoSub}>Salvar</Button></div>}
+      >
+        <div className="space-y-3">
+          <div><label className="hud-label mb-1">Nome *</label><input value={editSubNome} onChange={e => setEditSubNome(e.target.value)} className={inputCls} /></div>
+          <div><label className="hud-label mb-1">Coberturas (separadas por vírgula)</label><textarea value={editSubCobs} onChange={e => setEditSubCobs(e.target.value)} rows={3} placeholder="Ex: Colisão, Roubo/Furto, Incêndio" className={inputCls + ' resize-none'} /></div>
+        </div>
+      </Modal>
 
       {/* Modal Adicionar Subcategoria */}
       <Modal isOpen={!!addSubModal} onClose={() => setAddSubModal(null)} title="Nova Subcategoria" size="sm"

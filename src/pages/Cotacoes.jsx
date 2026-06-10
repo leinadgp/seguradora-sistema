@@ -18,7 +18,7 @@ import { useCatalogo } from '../hooks/useCatalogo'
 
 const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', email: '',
-  tipoSeguro: 'Auto', subcategoria: '', ramo: '',
+  tipoSeguro: 'Auto', subcategorias: [], ramo: '',
   seguradora: 'Porto Seguro', produto: '',
   valorEstimado: '', premio: '', percentualComissao: '15', comissao: '',
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
@@ -339,18 +339,26 @@ export default function Cotacoes() {
           <Section title="Dados do Seguro">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FF label="Tipo de seguro">
-                <select value={form.tipoSeguro} onChange={e => {
-                  const subs = getSubcategorias(e.target.value)
-                  setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategoria: subs[0]?.nome || '', ramo: getRamo(e.target.value) }))
-                }} className={inputCls}>
-                  {getTipos(['seguro', 'saude', 'previdencia']).map(t => <option key={t}>{t}</option>)}
+                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], ramo: getRamo(e.target.value) }))} className={inputCls}>
+                  {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </FF>
-              <FF label="Subcategoria">
-                <select value={form.subcategoria || ''} onChange={e => setForm(f => ({ ...f, subcategoria: e.target.value }))} className={inputCls}>
-                  <option value="">— Todas —</option>
-                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
-                </select>
+              <FF label="Coberturas / Subcategoria">
+                <div className="flex flex-wrap gap-1.5 mt-1 min-h-[32px]">
+                  {getSubcategorias(form.tipoSeguro).map(s => {
+                    const sel = (form.subcategorias || []).includes(s.nome)
+                    return (
+                      <button key={s.id} type="button"
+                        onClick={() => setForm(f => { const arr = f.subcategorias || []; return { ...f, subcategorias: arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome] } })}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${sel ? 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-cyber-cyan/30'}`}>
+                        {s.nome}
+                      </button>
+                    )
+                  })}
+                  {getSubcategorias(form.tipoSeguro).length === 0 && (
+                    <span className="text-xs text-cyber-muted self-center">Selecione o tipo acima</span>
+                  )}
+                </div>
               </FF>
               <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}>{seguradorasLista.map(s => <option key={s}>{s}</option>)}</select></FF>
               <FF label="Produto"><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>

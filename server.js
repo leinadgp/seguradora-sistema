@@ -1,8 +1,6 @@
 import express from 'express'
-import Database from 'better-sqlite3'
+import { createClient } from '@supabase/supabase-js'
 import cors from 'cors'
-import { fileURLToPath } from 'url'
-import path from 'path'
 
 import {
   usuarios, seguradoras, clientes, leads, apolices, propostas,
@@ -12,8 +10,7 @@ import {
 } from './src/data/mockData.js'
 import { catalogoSeguros } from './src/data/catalogoSeguros.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const db = new Database(path.join(__dirname, 'seguradora.db'))
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
 const app = express()
 
 app.use(cors())
@@ -27,63 +24,44 @@ const ENTITIES = {
   seguros_catalogo: catalogoSeguros,
 }
 
-// Create tables and seed on first run
-for (const [name, rows] of Object.entries(ENTITIES)) {
-  db.exec(`CREATE TABLE IF NOT EXISTS "${name}" (id TEXT PRIMARY KEY, data TEXT NOT NULL)`)
-  const count = db.prepare(`SELECT COUNT(*) as n FROM "${name}"`).get()
-  if (count.n === 0) {
-    const insert = db.prepare(`INSERT INTO "${name}" (id, data) VALUES (?, ?)`)
-    const seed = db.transaction((items) => {
-      items.forEach((item, i) => {
-        const id = String(item.id ?? (i + 1))
-        insert.run(id, JSON.stringify({ ...item, id }))
-      })
-    })
-    seed(rows)
-  }
-}
-
-function parseRows(rows) {
-  return rows.map(r => JSON.parse(r.data))
-}
-
 // GET /api/:entity
-app.get('/api/:entity', (req, res) => {
+app.get('/api/:entity', async (req, res) => {
   const { entity } = req.params
   if (!ENTITIES[entity]) return res.status(404).json({ error: 'Entity not found' })
-  const rows = db.prepare(`SELECT data FROM "${entity}"`).all()
-  res.json(parseRows(rows))
+  const { data, error } = await supabase.from(entity).select('data')
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data.map(r => r.data))
 })
 
 // POST /api/:entity
-app.post('/api/:entity', (req, res) => {
+app.post('/api/:entity', async (req, res) => {
   const { entity } = req.params
   if (!ENTITIES[entity]) return res.status(404).json({ error: 'Entity not found' })
   const id = String(req.body.id || Date.now())
   const item = { ...req.body, id }
-  db.prepare(`INSERT OR REPLACE INTO "${entity}" (id, data) VALUES (?, ?)`).run(id, JSON.stringify(item))
+  const { error } = await supabase.from(entity).upsert({ id, data: item })
+  if (error) return res.status(500).json({ error: error.message })
   res.status(201).json(item)
 })
 
 // PUT /api/:entity/:id
-app.put('/api/:entity/:id', (req, res) => {
+app.put('/api/:entity/:id', async (req, res) => {
   const { entity, id } = req.params
   if (!ENTITIES[entity]) return res.status(404).json({ error: 'Entity not found' })
   const item = { ...req.body, id }
-  const result = db.prepare(`UPDATE "${entity}" SET data = ? WHERE id = ?`).run(JSON.stringify(item), id)
-  if (result.changes === 0) {
-    db.prepare(`INSERT INTO "${entity}" (id, data) VALUES (?, ?)`).run(id, JSON.stringify(item))
-  }
+  const { error } = await supabase.from(entity).upsert({ id, data: item })
+  if (error) return res.status(500).json({ error: error.message })
   res.json(item)
 })
 
 // DELETE /api/:entity/:id
-app.delete('/api/:entity/:id', (req, res) => {
+app.delete('/api/:entity/:id', async (req, res) => {
   const { entity, id } = req.params
   if (!ENTITIES[entity]) return res.status(404).json({ error: 'Entity not found' })
-  db.prepare(`DELETE FROM "${entity}" WHERE id = ?`).run(id)
+  const { error } = await supabase.from(entity).delete().eq('id', id)
+  if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
 })
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`))

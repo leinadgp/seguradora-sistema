@@ -27,7 +27,7 @@ const groups = [
     label: 'Carteira',
     items: [
       { to: '/apolices',    icon: FileText,   label: 'Apólices' },
-      { to: '/seguros',     icon: Shield,     label: 'Produtos' },
+      { to: '/seguros',     icon: Shield,     label: 'Produtos / Catálogo' },
       { to: '/seguradoras', icon: Building2,  label: 'Seguradoras' },
       { to: '/corretoras',  icon: Briefcase,  label: 'Corretoras' },
       { to: '/renovacoes',  icon: RefreshCw,  label: 'Renovações' },
