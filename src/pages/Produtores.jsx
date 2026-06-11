@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, User, Building2 } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, User, Building2, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarCPFouCNPJ, validarEmail, validarCEP } from '../lib/validators'
 
 const tiposProdutor = ['Funcionário Administrativo', 'Funcionário Comercial', 'Externo']
 const tipoProdutorColor = {
@@ -30,7 +31,7 @@ function iniciais(nome = '') {
 
 export default function Produtores() {
   const { showToast } = useApp()
-  const { data: produtores, create, update } = useResource('produtores')
+  const { data: produtores, create, update, remove } = useResource('produtores')
   const [search, setSearch] = useState('')
   const [filterTipo, setFilterTipo] = useState('Todos')
   const [showModal, setShowModal] = useState(false)
@@ -38,6 +39,7 @@ export default function Produtores() {
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = produtores.filter(p => {
     const q = search.toLowerCase()
@@ -50,8 +52,22 @@ export default function Produtores() {
   function openEdit(p) { setForm({ ...emptyForm, ...p }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
   function openDetalhes(p) { setSelected(p); setShowDetalhes(true) }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Produtor excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome / razão social.', 'error'); return }
+    if (form.cpfCnpj && !validarCPFouCNPJ(form.cpfCnpj)) { showToast('CPF/CNPJ inválido.', 'error'); return }
+    if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
+    if (form.cep && !validarCEP(form.cep)) { showToast('CEP inválido.', 'error'); return }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form, avatar: iniciais(form.nome) })
@@ -108,10 +124,25 @@ export default function Produtores() {
             <div className="flex gap-2">
               <button onClick={() => openDetalhes(p)} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg py-1.5 transition-colors"><Eye size={14} /> Ver</button>
               <button onClick={() => { setSelected(p); openEdit(p) }} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-muted hover:bg-slate-100 rounded-lg py-1.5 transition-colors"><Edit2 size={14} /> Editar</button>
+              <button onClick={() => setConfirmDelete(p)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}
       </div>
+
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o produtor <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Detalhes */}
       <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.nome} size="md"

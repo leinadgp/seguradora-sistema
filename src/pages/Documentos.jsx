@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Upload, Eye, Folder, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react'
+import { Plus, Search, Upload, Folder, CheckCircle, Clock, XCircle, AlertCircle, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
@@ -16,12 +16,13 @@ const statusIcon = { pendente: <AlertCircle size={14} className="text-amber-500"
 
 export default function Documentos() {
   const { showToast } = useApp()
-  const { data: docs, create, update } = useResource('documentos')
+  const { data: docs, create, update, remove } = useResource('documentos')
   const { data: clientes } = useResource('clientes')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = docs.filter(d => {
     const q = search.toLowerCase()
@@ -39,6 +40,16 @@ export default function Documentos() {
       setShowModal(false)
     } catch {
       showToast('Erro ao salvar. Verifique a conexão com o servidor.', 'error')
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Documento excluído!')
+      setConfirmDelete(null)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
     }
   }
 
@@ -119,11 +130,29 @@ export default function Documentos() {
                       <CheckCircle size={12} /> Aprovar
                     </button>
                   )}
+                  <button onClick={() => setConfirmDelete(d)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o documento <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
       )}
 
       {/* Modal Novo */}

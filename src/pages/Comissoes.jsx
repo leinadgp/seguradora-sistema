@@ -1,8 +1,12 @@
-﻿import { useState } from 'react'
-import { Search, DollarSign, Filter } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Search, DollarSign, Filter, Trash2 } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
+import Modal from '../components/ui/Modal'
+import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
+import Pagination from '../components/ui/Pagination'
 import useResource from '../hooks/useResource'
+import { useApp } from '../context/AppContext'
 
 function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0) }
 
@@ -10,10 +14,25 @@ const corretores = ['Todos', 'Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Robert
 const statusOpcoes = ['todos', 'prevista', 'recebida', 'paga_corretor', 'atrasada']
 
 export default function Comissoes() {
-  const { data: comissoes } = useResource('comissoes')
+  const { showToast } = useApp()
+  const { data: comissoes, remove } = useResource('comissoes')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
   const [filterCorretor, setFilterCorretor] = useState('Todos')
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterCorretor])
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Comissão excluída!')
+      setConfirmDelete(null)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
 
   const filtered = comissoes.filter(c => {
     const q = search.toLowerCase()
@@ -22,6 +41,7 @@ export default function Comissoes() {
     const matchCorretor = filterCorretor === 'Todos' || c.corretor === filterCorretor
     return match && matchStatus && matchCorretor
   })
+  const paginado = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   const prevista = comissoes.filter(c => c.status === 'prevista').reduce((a, c) => a + c.valor, 0)
   const recebida = comissoes.filter(c => ['recebida', 'paga_corretor'].includes(c.status)).reduce((a, c) => a + c.valor, 0)
@@ -81,13 +101,13 @@ export default function Comissoes() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-cyber-border/40">
-                {['Apólice', 'Cliente', 'Seguradora', 'Corretor', 'Prêmio', 'Comissão %', 'Valor', 'Data Prevista', 'Recebimento', 'Status'].map(h => (
+                {['Apólice', 'Cliente', 'Seguradora', 'Corretor', 'Prêmio', 'Comissão %', 'Valor', 'Data Prevista', 'Recebimento', 'Status', ''].map(h => (
                   <th key={h} className="text-left hud-label px-4 py-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-cyber-border/20">
-              {filtered.map(c => (
+              {paginado.map(c => (
                 <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 text-sm font-data text-cyber-muted">{c.apolice}</td>
                   <td className="px-4 py-3 text-sm font-medium text-cyber-text">{c.cliente}</td>
@@ -99,6 +119,9 @@ export default function Comissoes() {
                   <td className="px-4 py-3 text-xs text-cyber-muted">{c.dataPrevista}</td>
                   <td className="px-4 py-3 text-xs text-cyber-muted">{c.dataRecebimento || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={c.status} type="comissao" /></td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setConfirmDelete(c)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={14} /></button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -106,7 +129,7 @@ export default function Comissoes() {
         </div>
         {/* Mobile */}
         <div className="md:hidden divide-y divide-cyber-border/30">
-          {filtered.map(c => (
+          {paginado.map(c => (
             <div key={c.id} className="p-4">
               <div className="flex items-start justify-between mb-1">
                 <div>
@@ -120,13 +143,32 @@ export default function Comissoes() {
                 <span className="text-sm font-bold text-cyber-green">{fmtMoeda(c.valor)}</span>
               </div>
               <p className="text-xs text-cyber-muted mt-1">Corretor: {c.corretor} · {c.percentual}%</p>
+              <div className="flex justify-end mt-2">
+                <button onClick={() => setConfirmDelete(c)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={13} /></button>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
+      <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} />
+
       {filtered.length === 0 && (
         <div className="text-center py-10 text-cyber-muted text-sm">Nenhuma comissão encontrada.</div>
+      )}
+
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a comissão de <strong className="text-cyber-red">"{confirmDelete.cliente}"</strong> ({confirmDelete.apolice})?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
       )}
     </div>
   )

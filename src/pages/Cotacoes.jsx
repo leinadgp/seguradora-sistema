@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Eye, Edit2, FileText, ArrowRight, LayoutGrid, List, ClipboardList } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, FileText, ArrowRight, LayoutGrid, List, ClipboardList, Trash2 } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
@@ -10,9 +10,10 @@ import FluxoSeguro from '../components/ui/FluxoSeguro'
 import Timeline from '../components/ui/Timeline'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarEmail, validarTelefone } from '../lib/validators'
 import {
-  fmtMoeda, todayISO, genNumero, logEvento, CURRENT_USER,
-  cotacaoStatus, cotacaoStatusList, cotacaoKanbanList, tiposSeguro, responsaveis, seguradorasLista,
+  fmtMoeda, todayISO, genNumero, logEvento,
+  cotacaoStatus, cotacaoStatusList, cotacaoKanbanList, tiposSeguro,
 } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
 
@@ -35,7 +36,9 @@ export default function Cotacoes() {
   const { showToast } = useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: cotacoes, create, update } = useResource('cotacoes')
+  const { data: cotacoes, create, update, remove } = useResource('cotacoes')
+  const { data: seguradoras } = useResource('seguradoras')
+  const { data: usuarios } = useResource('usuarios')
   const { data: propostas, create: createProposta } = useResource('propostas')
   const { data: apolices } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
@@ -50,6 +53,7 @@ export default function Cotacoes() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [convertConfirm, setConvertConfirm] = useState(null) // { cot } para confirmar gerar proposta
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
 
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
@@ -84,6 +88,17 @@ export default function Cotacoes() {
   function openEdit(c) { setForm({ ...emptyForm, ...c }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
   function openDetalhes(c) { setSelected(c); setShowDetalhes(true) }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Cotação excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   function recalcComissao(premio, pct) {
     const p = Number(premio) || 0, c = Number(pct) || 0
     return p && c ? parseFloat((p * c / 100).toFixed(2)) : ''
@@ -91,6 +106,12 @@ export default function Cotacoes() {
 
   async function handleSave() {
     if (!form.cliente) { showToast('Preencha o nome do cliente.', 'error'); return }
+    if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
+    if (form.telefone && !validarTelefone(form.telefone)) { showToast('Telefone inválido.', 'error'); return }
+    if (form.coCorretagem) {
+      const total = parseFloat(form.percentualComissaoAttenti || 0) + parseFloat(form.percentualComissaoMega || 0)
+      if (Math.abs(total - 100) > 0.01) { showToast(`Co-corretagem: ${total.toFixed(1)}% — ATTENTI + MEGA devem somar 100%.`, 'error'); return }
+    }
     const premio = form.premioLiquido || form.premioBruto || 0
     const comissao = recalcComissao(premio, form.percentualComissaoAttenti)
     try {
@@ -147,7 +168,7 @@ export default function Cotacoes() {
         cliente: cot.cliente, cpfCnpj: cot.cpfCnpj, telefone: cot.telefone, email: cot.email,
         tipoSeguro: cot.tipoSeguro, seguradora: cot.seguradora, produto: cot.produto,
         seguradorasCotadas: cot.seguradora ? [cot.seguradora] : [],
-        premio: cot.premio, melhorValor: cot.premio, valorApresentado: cot.premio,
+        premio: cot.premioLiquido || cot.premioBruto || cot.premio, melhorValor: cot.premioLiquido || cot.premioBruto || cot.premio, valorApresentado: cot.premioLiquido || cot.premioBruto || cot.premio,
         comissao: cot.comissao, percentualComissao: cot.percentualComissao,
         responsavel: cot.responsavel,
         status: 'em_analise', statusFlow: 'rascunho',
@@ -247,7 +268,7 @@ export default function Cotacoes() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    {c.premio && <p className="text-lg font-bold text-cyber-text">{fmtMoeda(c.premio)}</p>}
+                    {(c.premioLiquido || c.premioBruto || c.premio) && <p className="text-lg font-bold text-cyber-text">{fmtMoeda(c.premioLiquido || c.premioBruto || c.premio)}</p>}
                     <div className="flex gap-2">
                       <button onClick={() => openDetalhes(c)} className="flex items-center gap-1.5 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 px-3 py-1.5 rounded-lg transition-colors"><Eye size={14} /> Ver</button>
                       <button onClick={() => openEdit(c)} className="text-sm text-cyber-muted hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">Editar</button>
@@ -256,6 +277,9 @@ export default function Cotacoes() {
                       ) : (
                         <button onClick={() => gerarProposta(c)} className="flex items-center gap-1.5 text-sm text-cyber-green hover:bg-cyber-green/10 px-3 py-1.5 rounded-lg transition-colors font-medium"><ClipboardList size={14} /> Gerar Proposta</button>
                       )}
+                      <button onClick={() => setConfirmDelete(c)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -310,7 +334,7 @@ export default function Cotacoes() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
                 ['CPF/CNPJ', selected.cpfCnpj], ['Telefone', selected.telefone], ['E-mail', selected.email],
-                ['Seguradora', selected.seguradora], ['Valor estimado', fmtMoeda(selected.valorEstimado)], ['Prêmio', fmtMoeda(selected.premio)],
+                ['Seguradora', selected.seguradora], ['Valor estimado', fmtMoeda(selected.valorEstimado)], ['Prêmio', fmtMoeda(selected.premioLiquido || selected.premioBruto || selected.premio)],
                 ['Comissão', `${selected.percentualComissao || 0}% · ${fmtMoeda(selected.comissao)}`], ['Responsável', selected.responsavel], ['Criada em', selected.dataCriacao],
               ].map(([k, v]) => (
                 <div key={k}><p className="text-xs text-cyber-muted mb-0.5">{k}</p><p className="text-sm font-medium text-cyber-text">{v || '—'}</p></div>
@@ -381,7 +405,7 @@ export default function Cotacoes() {
                   )}
                 </div>
               </FF>
-              <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}>{seguradorasLista.map(s => <option key={s}>{s}</option>)}</select></FF>
+              <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}><option value="">Selecione...</option>{seguradoras.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}</select></FF>
               <FF label="Produto"><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>
             </div>
           </Section>
@@ -411,13 +435,28 @@ export default function Cotacoes() {
           </Section>
           <Section title="Gestão">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FF label="Responsável"><select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>{responsaveis.map(r => <option key={r}>{r}</option>)}</select></FF>
+              <FF label="Responsável"><select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>{usuarios.map(u => <option key={u.id}>{u.nome}</option>)}</select></FF>
               <FF label="Status"><select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>{cotacaoStatusList.filter(s => s !== 'convertida').map(s => <option key={s} value={s}>{cotacaoStatus[s].label}</option>)}</select></FF>
               <FF label="Observações" span><textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={3} className={inputCls + ' resize-none'} /></FF>
             </div>
           </Section>
         </div>
       </Modal>
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a cotação <strong className="text-cyber-red">"{confirmDelete.numero || confirmDelete.cliente}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Confirmar gerar proposta (após arrastar p/ Aprovada) */}
       <Modal isOpen={!!convertConfirm} onClose={() => setConvertConfirm(null)} title="Gerar proposta?" size="sm"
@@ -510,7 +549,7 @@ function KanbanCotacoes({ cotacoes, onDropStatus, onOpen }) {
                       <p className="text-sm font-semibold text-cyber-text leading-tight">{c.cliente}</p>
                       <p className="text-xs text-cyber-muted mt-0.5">{c.tipoSeguro} · {c.seguradora || '—'}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs font-bold text-cyber-text">{fmtMoeda(c.premio)}</span>
+                        <span className="text-xs font-bold text-cyber-text">{fmtMoeda(c.premioLiquido || c.premioBruto || c.premio)}</span>
                         {c.converted_proposal_id && <Badge color="purple">Proposta</Badge>}
                       </div>
                     </div>

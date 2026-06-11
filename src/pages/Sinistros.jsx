@@ -1,17 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { input as inputCls, label as labelCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, AlertTriangle, Download } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, AlertTriangle, Download, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
+import Pagination from '../components/ui/Pagination'
 import DynamicForm from '../components/ui/DynamicForm'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { useCatalogo } from '../hooks/useCatalogo'
 import { sinistroTypeFields } from '../data/insuranceFields'
+import { genNumero, logEvento, todayISO } from '../lib/flow'
 
 const statusOpcoes = ['aberto', 'em_analise', 'aguardando_documentos', 'aguardando_seguradora', 'aprovado', 'negado', 'indenizado', 'encerrado']
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 const prioridades = ['Baixa', 'Normal', 'Alta', 'Urgente']
 
 const emptyForm = {
@@ -107,11 +108,12 @@ function exportarCSV(dados) {
 
 export default function Sinistros() {
   const { showToast } = useApp()
-  const { data: sinistros, create, update } = useResource('sinistros')
+  const { data: sinistros, create, update, remove } = useResource('sinistros')
+  const { data: usuarios } = useResource('usuarios')
   const { data: apolices } = useResource('apolices')
   const { getTipos, catalogo } = useCatalogo()
   // Tipos ativos para formulário; todos os tipos (incl. legados) para o filtro
-  const tiposSinistroForm = [...getTipos(), 'Outros']
+  const tiposSinistroForm = [...new Set([...getTipos(), 'Outros'])]
   const tiposSinistroFiltro = [...new Set([...catalogo.map(c => c.tipo), 'Outros'])]
   const { data: clientes } = useResource('clientes')
   const [search, setSearch] = useState('')
@@ -124,6 +126,10 @@ export default function Sinistros() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [aba, setAba] = useState(0)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterTipo, filterPrioridade])
 
   const filtered = sinistros.filter(s => {
     const q = search.toLowerCase()
@@ -135,6 +141,7 @@ export default function Sinistros() {
     const matchPrioridade = filterPrioridade === 'todos' || s.prioridade === filterPrioridade
     return match && matchStatus && matchTipo && matchPrioridade
   })
+  const paginado = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   const emAberto     = sinistros.filter(s => !['encerrado', 'indenizado', 'negado'].includes(s.status)).length
   const urgentes     = sinistros.filter(s => s.prioridade === 'Urgente' && !['encerrado', 'indenizado', 'negado'].includes(s.status)).length
@@ -181,15 +188,19 @@ export default function Sinistros() {
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...payload })
+        await logEvento('sinistro', selected.id, 'Sinistro atualizado', `Sinistro ${selected.numero} atualizado.`)
         showToast('Sinistro atualizado!')
       } else {
+        const id = Date.now().toString()
+        const numero = genNumero('SIN', sinistros)
         await create({
           ...payload,
-          id: Date.now().toString(),
-          numero: `SIN-2026-${String(sinistros.length + 1).padStart(3, '0')}`,
-          dataAbertura: new Date().toISOString().split('T')[0],
-          timeline: [{ data: new Date().toISOString().split('T')[0], acao: 'Sinistro registrado', responsavel: form.responsavel }],
+          id,
+          numero,
+          dataAbertura: todayISO(),
+          timeline: [{ data: todayISO(), acao: 'Sinistro registrado', responsavel: form.responsavel }],
         })
+        await logEvento('sinistro', id, 'Sinistro registrado', `Sinistro ${numero} (${payload.tipoSinistro}) registrado para ${payload.cliente}.`)
         showToast('Sinistro registrado!')
       }
       setShowModal(false)
@@ -198,11 +209,25 @@ export default function Sinistros() {
     }
   }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Sinistro excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) setShowDetalhes(false)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   async function atualizarStatus(id, novoStatus) {
     try {
       const s = sinistros.find(s => s.id === id)
       if (s) {
-        const updated = await update(id, { ...s, status: novoStatus })
+        const novaEntrada = { data: todayISO(), acao: `Status alterado para: ${novoStatus.replace(/_/g, ' ')}`, responsavel: s.responsavel || 'Sistema' }
+        const timeline = [...(Array.isArray(s.timeline) ? s.timeline : []), novaEntrada]
+        const updated = await update(id, { ...s, status: novoStatus, timeline })
+        await logEvento('sinistro', id, 'Status atualizado', `Status do sinistro ${s.numero} alterado para "${novoStatus.replace(/_/g, ' ')}".`)
         if (selected?.id === id) setSelected(updated)
       }
       showToast('Status atualizado!')
@@ -261,8 +286,9 @@ export default function Sinistros() {
 
       {/* Tabela */}
       {filtered.length === 0 ? (
-        <EmptyState icon={AlertTriangle} title="Nenhum sinistro encontrado" description="Ajuste os filtros ou registre um novo sinistro." />
+        <EmptyState icon={<AlertTriangle size={28} />} title="Nenhum sinistro encontrado" description="Ajuste os filtros ou registre um novo sinistro." />
       ) : (
+        <>
         <div className="glass rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -274,7 +300,7 @@ export default function Sinistros() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cyber-cyan/5">
-                {filtered.map(s => (
+                {paginado.map(s => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-4 py-3 font-mono text-xs text-cyber-cyan whitespace-nowrap">{s.numero}</td>
                     <td className="px-4 py-3">
@@ -304,6 +330,10 @@ export default function Sinistros() {
                           className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Editar">
                           <Edit2 size={13} />
                         </button>
+                        <button onClick={() => setConfirmDelete(s)}
+                          className="p-1.5 rounded-lg hover:bg-cyber-red/10 text-cyber-muted hover:text-cyber-red transition-colors cursor-pointer" title="Excluir">
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -326,11 +356,13 @@ export default function Sinistros() {
             </table>
           </div>
         </div>
+        <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} />
+        </>
       )}
 
       {/* Modal Detalhes */}
       {showDetalhes && selected && (
-        <Modal title={`Sinistro ${selected.numero}`} onClose={() => setShowDetalhes(false)} size="xl"
+        <Modal isOpen title={`Sinistro ${selected.numero}`} onClose={() => setShowDetalhes(false)} size="xl"
           footer={
             <div className="flex gap-2 flex-wrap">
               <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Fechar</Button>
@@ -440,9 +472,24 @@ export default function Sinistros() {
         </Modal>
       )}
 
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o sinistro <strong className="text-cyber-red">{confirmDelete.numero}</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
+
       {/* Modal Formulário */}
       {showModal && (
-        <Modal title={isEditing ? 'Editar Sinistro' : 'Novo Sinistro'} onClose={() => setShowModal(false)} size="xl"
+        <Modal isOpen title={isEditing ? 'Editar Sinistro' : 'Novo Sinistro'} onClose={() => setShowModal(false)} size="xl"
           footer={
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
@@ -535,7 +582,7 @@ export default function Sinistros() {
                 <div>
                   <label className={labelCls}>Responsável</label>
                   <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
-                    {responsaveis.map(r => <option key={r}>{r}</option>)}
+                    {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
                   </select>
                 </div>
               </div>

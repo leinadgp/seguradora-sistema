@@ -6,7 +6,11 @@ async function request(method, path, body) {
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error(`API ${method} ${path} failed: ${res.status}`)
+  if (!res.ok) {
+    let msg = `API ${method} ${path} failed: ${res.status}`
+    try { const d = await res.json(); if (d.error) msg = d.error } catch {}
+    throw new Error(msg)
+  }
   return res.json()
 }
 

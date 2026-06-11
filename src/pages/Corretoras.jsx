@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, User, Building2, Phone, Mail } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, User, Building2, Phone, Mail, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarCPFouCNPJ, validarEmail } from '../lib/validators'
 
 const emptyForm = {
   tipoPessoa: 'Jurídica', nome: '', cpfCnpj: '', inscricaoMunicipal: '', contato: '',
@@ -15,13 +16,14 @@ const emptyForm = {
 
 export default function Corretoras() {
   const { showToast } = useApp()
-  const { data: corretoras, create, update } = useResource('corretoras')
+  const { data: corretoras, create, update, remove } = useResource('corretoras')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDetalhes, setShowDetalhes] = useState(false)
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = corretoras.filter(c => {
     const q = search.toLowerCase()
@@ -32,8 +34,21 @@ export default function Corretoras() {
   function openEdit(c) { setForm({ ...emptyForm, ...c }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
   function openDetalhes(c) { setSelected(c); setShowDetalhes(true) }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Corretora excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome / razão social.', 'error'); return }
+    if (form.cpfCnpj && !validarCPFouCNPJ(form.cpfCnpj)) { showToast('CPF/CNPJ inválido.', 'error'); return }
+    if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form })
@@ -85,10 +100,25 @@ export default function Corretoras() {
             <div className="flex gap-2">
               <button onClick={() => openDetalhes(c)} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg py-1.5 transition-colors"><Eye size={14} /> Ver</button>
               <button onClick={() => { setSelected(c); openEdit(c) }} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-muted hover:bg-slate-100 rounded-lg py-1.5 transition-colors"><Edit2 size={14} /> Editar</button>
+              <button onClick={() => setConfirmDelete(c)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}
       </div>
+
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a corretora <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Detalhes */}
       <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.nome} size="md"

@@ -1,7 +1,8 @@
 import api from '../api/client'
 
-// Usuário "logado" no protótipo (usado nos registros de histórico)
-export const CURRENT_USER = 'Carlos Silva'
+let _currentUser = 'Sistema'
+export function setCurrentUser(name) { _currentUser = name }
+export function getCurrentUser() { return _currentUser }
 
 export function fmtMoeda(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0)
@@ -35,7 +36,8 @@ export function genNumero(prefix, list = [], pad = 3) {
 }
 
 // Registra um evento no histórico (timeline). Não bloqueia o fluxo se falhar.
-export async function logEvento(entityType, entityId, action, description, user = CURRENT_USER) {
+export async function logEvento(entityType, entityId, action, description, user) {
+  user = user ?? _currentUser
   try {
     await api.post('historico', {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

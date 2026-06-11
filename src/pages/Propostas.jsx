@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, ArrowRight, Shield, FileText, LayoutGrid, List } from 'lucide-react'
+import { Plus, Search, Eye, ArrowRight, Shield, FileText, LayoutGrid, List, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -15,8 +15,6 @@ import useResource from '../hooks/useResource'
 import { insuranceTypeFields } from '../data/insuranceFields'
 import { genNumero, logEvento, todayISO, propostaStatus, propostaKanbanList, propostaStatusList } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves']
-const todas_seguradoras = ['Porto Seguro', 'Tokio Marine', 'Azul Seguros', 'Liberty Seguros', 'Mapfre', 'SulAmérica', 'Bradesco Seguros', 'Allianz']
 const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto', 'PIX', '1x no cartão', '3x no cartão', '6x no cartão', '10x no cartão', '12x no cartão']
 
 const ABAS = ['Dados Gerais', 'Dados do Seguro', 'Valores', 'Observações']
@@ -37,7 +35,9 @@ export default function Propostas() {
   const { showToast } = useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: propostas, create, update } = useResource('propostas')
+  const { data: propostas, create, update, remove } = useResource('propostas')
+  const { data: usuarios } = useResource('usuarios')
+  const { data: seguradoras } = useResource('seguradoras')
   const { data: cotacoes } = useResource('cotacoes')
   const { data: apolices, create: createApolice } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
@@ -54,6 +54,7 @@ export default function Propostas() {
   const [isEditing, setIsEditing] = useState(false)
   const [showConvertir, setShowConvertir] = useState(false)
   const [aba, setAba] = useState(0)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
 
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
@@ -90,8 +91,23 @@ export default function Propostas() {
   function openNew() { setForm(emptyForm); setIsEditing(false); setAba(0); setShowModal(true) }
   function openEdit(p) { setForm({ ...emptyForm, ...p }); setIsEditing(true); setAba(0); setShowModal(true); setShowDetalhes(false) }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Proposta excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   async function handleSave() {
     if (!form.cliente) { showToast('Preencha o nome do cliente.', 'error'); return }
+    if (form.coCorretagem) {
+      const total = parseFloat(form.percentualComissaoAttenti || 0) + parseFloat(form.percentualComissaoMega || 0)
+      if (Math.abs(total - 100) > 0.01) { showToast(`Co-corretagem: ${total.toFixed(1)}% — ATTENTI + MEGA devem somar 100%.`, 'error'); return }
+    }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form })
@@ -140,7 +156,7 @@ export default function Propostas() {
         numeroProposta: prop.numero,
         cliente: prop.cliente, cpfCnpj: prop.cpfCnpj, telefone: prop.telefone, email: prop.email,
         tipoSeguro: prop.tipoSeguro, seguradora: prop.seguradora, produto: prop.produto,
-        premioBruto: prop.premio || prop.melhorValor || '', premioLiquido: prop.premio || '', premio: prop.premio || prop.melhorValor || '',
+        premioBruto: prop.premioBruto || prop.premio || prop.melhorValor || '', premioLiquido: prop.premioLiquido || prop.premio || '', premio: prop.premioLiquido || prop.premioBruto || prop.premio || prop.melhorValor || '',
         comissaoValor: prop.comissao || '', comissao: prop.comissao || '', comissaoPercentual: prop.percentualComissao || '',
         statusComissao: 'prevista', corretor: prop.responsavel, responsavel: prop.responsavel,
         status: 'ativa', dataEmissao: inicio, inicioVigencia: inicio, fimVigencia: fim, diasParaVencer: 365,
@@ -255,6 +271,9 @@ export default function Propostas() {
                           <Shield size={14} /> Gerar Pólice
                         </button>
                       )}
+                      <button onClick={() => setConfirmDelete(p)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -313,7 +332,7 @@ export default function Propostas() {
                 ['Telefone', selected.telefone || '—'],
                 ['E-mail', selected.email || '—'],
                 ['Produto', selected.produto || '—'],
-                ['Prêmio', fmtMoeda(selected.premio || selected.melhorValor)],
+                ['Prêmio', fmtMoeda(selected.premioLiquido || selected.premioBruto || selected.premio || selected.melhorValor)],
                 ['Comissão', selected.comissao ? `${selected.percentualComissao || 0}% · ${fmtMoeda(selected.comissao)}` : '—'],
                 ['Responsável', selected.responsavel],
                 ['Solicitado em', selected.dataSolicitacao || '—'],
@@ -348,6 +367,21 @@ export default function Propostas() {
           </div>
         )}
       </Modal>
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a proposta <strong className="text-cyber-red">"{confirmDelete.numero || confirmDelete.cliente}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Modal Confirmar geração de pólice */}
       <Modal isOpen={showConvertir} onClose={() => setShowConvertir(false)} title="Gerar Pólice" size="sm"
@@ -430,7 +464,7 @@ export default function Propostas() {
               <div>
                 <label className="hud-label mb-1">Responsável</label>
                 <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
-                  {responsaveis.map(r => <option key={r}>{r}</option>)}
+                  {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
                 </select>
               </div>
               <div>
@@ -465,10 +499,10 @@ export default function Propostas() {
             <div>
               <label className="text-xs font-medium text-cyber-muted mb-2 block">Seguradoras cotadas</label>
               <div className="grid grid-cols-2 gap-2 p-3 border border-cyber-border rounded-lg">
-                {todas_seguradoras.map(s => (
-                  <label key={s} className="flex items-center gap-2 text-sm text-cyber-text/80 cursor-pointer">
-                    <input type="checkbox" checked={form.seguradorasCotadas?.includes(s)} onChange={e => setForm(f => ({ ...f, seguradorasCotadas: e.target.checked ? [...(f.seguradorasCotadas || []), s] : (f.seguradorasCotadas || []).filter(x => x !== s) }))} className="rounded" />
-                    {s}
+                {seguradoras.map(s => (
+                  <label key={s.id} className="flex items-center gap-2 text-sm text-cyber-text/80 cursor-pointer">
+                    <input type="checkbox" checked={form.seguradorasCotadas?.includes(s.nome)} onChange={e => setForm(f => ({ ...f, seguradorasCotadas: e.target.checked ? [...(f.seguradorasCotadas || []), s.nome] : (f.seguradorasCotadas || []).filter(x => x !== s.nome) }))} className="rounded" />
+                    {s.nome}
                   </label>
                 ))}
               </div>

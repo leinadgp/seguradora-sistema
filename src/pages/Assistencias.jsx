@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { input as inputCls, label as labelCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, Headphones, Download, Star } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, Headphones, Download, Star, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { genNumero } from '../lib/flow'
 
 const statusOpcoes = ['solicitado', 'em_atendimento', 'concluido', 'cancelado']
 const prioridades = ['Normal', 'Alta', 'Urgente']
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 
 const tiposAssistencia = ['Auto 24h', 'Residencial / Patrimonial', 'Funeral', 'Equipamentos', 'Jurídica', 'Outros']
 
@@ -122,7 +122,8 @@ function exportarCSV(dados) {
 
 export default function Assistencias() {
   const { showToast } = useApp()
-  const { data: assistencias, create, update } = useResource('assistencias')
+  const { data: assistencias, create, update, remove } = useResource('assistencias')
+  const { data: usuarios } = useResource('usuarios')
   const { data: apolices } = useResource('apolices')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
@@ -133,6 +134,7 @@ export default function Assistencias() {
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = assistencias.filter(a => {
     const q = search.toLowerCase()
@@ -171,7 +173,7 @@ export default function Assistencias() {
   }
 
   async function handleSave() {
-    if (!form.cliente)                { showToast('Selecione a apólice.', 'error'); return }
+    if (!form.apoliceId)              { showToast('Selecione a apólice.', 'error'); return }
     if (!form.dataHoraSolicitacao)    { showToast('Preencha a data/hora de solicitação.', 'error'); return }
     if (!form.localAtendimento)       { showToast('Preencha o local de atendimento.', 'error'); return }
 
@@ -189,13 +191,24 @@ export default function Assistencias() {
         await create({
           ...payload,
           id: Date.now().toString(),
-          numero: `ASS-2026-${String(assistencias.length + 1).padStart(3, '0')}`,
+          numero: genNumero('ASS', assistencias),
         })
         showToast('Assistência registrada!')
       }
       setShowModal(false)
     } catch {
       showToast('Erro ao salvar. Verifique a conexão com o servidor.', 'error')
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Assistência excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) setShowDetalhes(false)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
     }
   }
 
@@ -264,7 +277,7 @@ export default function Assistencias() {
 
       {/* Tabela */}
       {filtered.length === 0 ? (
-        <EmptyState icon={Headphones} title="Nenhuma assistência encontrada" description="Ajuste os filtros ou registre uma nova assistência." />
+        <EmptyState icon={<Headphones size={28} />} title="Nenhuma assistência encontrada" description="Ajuste os filtros ou registre uma nova assistência." />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -304,19 +317,49 @@ export default function Assistencias() {
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openDetalhes(a)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Ver"><Eye size={13} /></button>
                         <button onClick={() => { setSelected(a); openEdit(a) }} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Editar"><Edit2 size={13} /></button>
+                        <button onClick={() => setConfirmDelete(a)} className="p-1.5 rounded-lg hover:bg-cyber-red/10 text-cyber-muted hover:text-cyber-red transition-colors cursor-pointer" title="Excluir"><Trash2 size={13} /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-cyber-cyan/20 bg-cyber-surface/40">
+                  <td colSpan={3} className="px-4 py-2.5 text-[10px] text-cyber-muted uppercase tracking-widest font-semibold">
+                    {filtered.length} registro{filtered.length !== 1 ? 's' : ''}
+                  </td>
+                  <td colSpan={2} className="px-4 py-2.5 text-[10px] text-cyber-muted">
+                    {filtered.filter(a => ['solicitado', 'em_atendimento'].includes(a.status)).length} em atendimento
+                  </td>
+                  <td colSpan={2} className="px-4 py-2.5 text-[10px] text-cyber-muted">
+                    {filtered.filter(a => a.status === 'concluido').length} concluídas
+                  </td>
+                  <td colSpan={4} />
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
       )}
 
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a assistência <strong className="text-cyber-red">{confirmDelete.numero}</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
+
       {/* Modal Detalhes */}
       {showDetalhes && selected && (
-        <Modal title={`Assistência ${selected.numero}`} onClose={() => setShowDetalhes(false)} size="lg"
+        <Modal isOpen title={`Assistência ${selected.numero}`} onClose={() => setShowDetalhes(false)} size="lg"
           footer={
             <div className="flex gap-2 flex-wrap">
               <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Fechar</Button>
@@ -389,7 +432,7 @@ export default function Assistencias() {
 
       {/* Modal Formulário */}
       {showModal && (
-        <Modal title={isEditing ? 'Editar Assistência' : 'Nova Assistência'} onClose={() => setShowModal(false)} size="lg"
+        <Modal isOpen title={isEditing ? 'Editar Assistência' : 'Nova Assistência'} onClose={() => setShowModal(false)} size="lg"
           footer={
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
@@ -448,7 +491,7 @@ export default function Assistencias() {
               <div>
                 <label className={labelCls}>Responsável</label>
                 <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
-                  {responsaveis.map(r => <option key={r}>{r}</option>)}
+                  {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
                 </select>
               </div>
             </div>

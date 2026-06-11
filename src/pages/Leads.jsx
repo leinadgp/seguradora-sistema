@@ -7,6 +7,7 @@ import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarEmail, validarTelefone } from '../lib/validators'
 import { genNumero, todayISO } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
 
@@ -25,7 +26,6 @@ const FASES_FINAIS = [
 ]
 
 const tempCor = { quente: 'bg-cyber-red glow-red', morno: 'bg-cyber-amber', frio: 'bg-cyber-cyan' }
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 // Lista mantida apenas como referência; selects usam useCatalogo()
 const tiposSeguros = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Frota', 'Rural', 'Viagem']
 const origens = ['Site', 'Indicação', 'Redes Sociais', 'WhatsApp', 'Prospecção', 'Facebook Ads', 'Google Ads']
@@ -35,7 +35,8 @@ const emptyForm = { nome: '', telefone: '', whatsapp: '', email: '', cidade: '',
 export default function Leads() {
   const { showToast } = useApp()
   const navigate = useNavigate()
-  const { data: leads, create, update } = useResource('leads')
+  const { data: leads, create, update, remove } = useResource('leads')
+  const { data: usuarios } = useResource('usuarios')
   const { data: cotacoes, create: createCotacao } = useResource('cotacoes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -44,6 +45,7 @@ export default function Leads() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [showPerdidos, setShowPerdidos] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [dragId, setDragId] = useState(null)
   const { getTipos, getSubcategorias } = useCatalogo()
   const [dragOver, setDragOver] = useState(null)
@@ -66,6 +68,8 @@ export default function Leads() {
 
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome do lead.', 'error'); return }
+    if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
+    if (form.telefone && !validarTelefone(form.telefone)) { showToast('Telefone inválido.', 'error'); return }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form })
@@ -125,6 +129,17 @@ export default function Leads() {
       setSelected(prev => ({ ...prev, status: novoStatus }))
     } catch {
       showToast('Erro ao atualizar status.', 'error')
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Lead excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) setShowDetalhes(false)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
     }
   }
 
@@ -270,13 +285,31 @@ export default function Leads() {
                     <p className="text-sm font-medium text-cyber-text/70">{l.nome}</p>
                     <p className="text-xs text-cyber-muted">{l.tipoSeguro} · {l.responsavel?.split(' ')[0]}</p>
                   </div>
-                  <button onClick={() => reativarPerdido(l)} className="text-xs text-cyber-cyan hover:underline">Reativar</button>
+                  <div className="flex gap-2">
+                    <button onClick={() => reativarPerdido(l)} className="text-xs text-cyber-cyan hover:underline">Reativar</button>
+                    <button onClick={() => setConfirmDelete(l)} className="text-xs text-cyber-red hover:underline">Excluir</button>
+                  </div>
                 </div>
               ))
             )}
           </div>
         )}
       </div>
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o lead <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Modal Detalhes Lead */}
       <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title="Detalhes do Lead" size="md"
@@ -285,6 +318,7 @@ export default function Leads() {
             <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Fechar</Button>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => openEdit(selected)}>Editar</Button>
+              <Button variant="danger" onClick={() => { setShowDetalhes(false); setConfirmDelete(selected) }}>Excluir</Button>
               <Button variant="success" icon={<User size={14} />} onClick={() => { showToast(`Lead "${selected.nome}" convertido em cliente!`); setShowDetalhes(false) }}>Converter em Cliente</Button>
             </div>
           </div>
@@ -405,7 +439,7 @@ export default function Leads() {
             <div>
               <label className="hud-label mb-1">Responsável</label>
               <select value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className={inputCls}>
-                {responsaveis.map(r => <option key={r}>{r}</option>)}
+                {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
               </select>
             </div>
           </div>

@@ -9,7 +9,6 @@ import { useCatalogo } from '../hooks/useCatalogo'
 
 // ── Produtos ───────────────────────────────────────────────────────────────
 const categorias = ['Todos', 'Veículos', 'Patrimonial', 'Empresarial', 'Vida e Pessoas', 'Saúde', 'Agrícola', 'Responsabilidade Civil', 'Viagem']
-const todasSeguradoras = ['Porto Seguro', 'Tokio Marine', 'Azul Seguros', 'Liberty Seguros', 'Mapfre', 'SulAmérica', 'Bradesco Seguros', 'Allianz']
 const catColor = {
   'Veículos': 'bg-cyber-cyan/10 text-cyber-cyan',
   'Patrimonial': 'bg-cyber-purple/10 text-cyber-purple',
@@ -331,7 +330,8 @@ function CatalogoAdmin() {
 // ── Componente ProdutosAdmin ───────────────────────────────────────────────
 function ProdutosAdmin() {
   const { showToast } = useApp()
-  const { data: produtos, create, update } = useResource('produtos')
+  const { data: produtos, create, update, remove } = useResource('produtos')
+  const { data: seguradoras } = useResource('seguradoras')
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('Todos')
   const [showModal, setShowModal] = useState(false)
@@ -339,6 +339,7 @@ function ProdutosAdmin() {
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyProd)
   const [isEditing, setIsEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = produtos.filter(p => {
     const match = !search || p.nome.toLowerCase().includes(search.toLowerCase())
@@ -348,6 +349,17 @@ function ProdutosAdmin() {
 
   function openNew() { setForm(emptyProd); setIsEditing(false); setShowModal(true) }
   function openEdit(p) { setForm({ ...emptyProd, ...p }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Produto excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
 
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome do produto.', 'error'); return }
@@ -401,10 +413,25 @@ function ProdutosAdmin() {
             <div className="flex gap-2">
               <button onClick={() => { setSelected(p); setShowDetalhes(true) }} className="flex-1 flex items-center justify-center gap-1 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg py-1.5 transition-colors"><Eye size={13} /> Ver</button>
               <button onClick={() => { setSelected(p); openEdit(p) }} className="flex-1 flex items-center justify-center gap-1 text-sm text-cyber-muted hover:bg-slate-100 rounded-lg py-1.5 transition-colors"><Edit2 size={13} /> Editar</button>
+              <button onClick={() => setConfirmDelete(p)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={13} /></button>
             </div>
           </div>
         ))}
       </div>
+
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o produto <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.nome} size="sm"
         footer={<div className="flex justify-between"><Button variant="secondary" onClick={() => setShowDetalhes(false)}>Fechar</Button><Button variant="secondary" icon={<Edit2 size={14} />} onClick={() => openEdit(selected)}>Editar</Button></div>}
@@ -438,10 +465,10 @@ function ProdutosAdmin() {
           <div>
             <label className="text-xs font-medium text-cyber-muted mb-2 block">Seguradoras parceiras</label>
             <div className="grid grid-cols-2 gap-2 p-3 border border-cyber-border rounded-lg">
-              {todasSeguradoras.map(s => (
-                <label key={s} className="flex items-center gap-1.5 text-xs text-cyber-text/80 cursor-pointer">
-                  <input type="checkbox" checked={form.seguradoras.includes(s)} onChange={e => setForm(f => ({ ...f, seguradoras: e.target.checked ? [...f.seguradoras, s] : f.seguradoras.filter(x => x !== s) }))} className="rounded" />
-                  {s}
+              {seguradoras.map(s => (
+                <label key={s.id} className="flex items-center gap-1.5 text-xs text-cyber-text/80 cursor-pointer">
+                  <input type="checkbox" checked={form.seguradoras.includes(s.nome)} onChange={e => setForm(f => ({ ...f, seguradoras: e.target.checked ? [...f.seguradoras, s.nome] : f.seguradoras.filter(x => x !== s.nome) }))} className="rounded" />
+                  {s.nome}
                 </label>
               ))}
             </div>

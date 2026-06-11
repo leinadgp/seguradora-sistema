@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Menu, Bell, Search, Zap, User, Settings, ChevronRight, AlertCircle, Clock, FileText, X } from 'lucide-react'
 import useResource from '../../hooks/useResource'
+import { useAuth } from '../../context/AuthContext'
 
 const titles = {
   '/dashboard':     'Dashboard',
@@ -21,7 +22,7 @@ const titles = {
   '/relatorios':    'Relatórios',
   '/produtores':    'Produtores',
   '/equipe':        'Produtores',
-  '/usuarios':      'Meu Perfil',
+  '/meu-perfil':    'Meu Perfil',
   '/configuracoes': 'Configurações',
 }
 
@@ -42,6 +43,13 @@ function useClickOutside(ref, handler) {
   }, [ref, handler])
 }
 
+function initials(nome) {
+  if (!nome) return '??'
+  const parts = nome.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 export default function Header({ onMenuClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -51,7 +59,11 @@ export default function Header({ onMenuClick }) {
   const [showProfile, setShowProfile] = useState(false)
   const [lidas, setLidas] = useState(new Set())
 
+  const { user, logout } = useAuth()
   const { data: alertas } = useResource('alertas')
+
+  const displayName = user?.nome || user?.email?.split('@')[0] || 'Usuário'
+  const avatarInitials = initials(displayName)
 
   const notifsRef = useRef(null)
   const profileRef = useRef(null)
@@ -164,7 +176,7 @@ export default function Header({ onMenuClick }) {
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:opacity-90 active:scale-95 transition-all select-none glow-cyan"
             style={{ background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' }}
           >
-            CS
+            {avatarInitials}
           </button>
 
           {showProfile && (
@@ -173,18 +185,18 @@ export default function Header({ onMenuClick }) {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
                     style={{ background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' }}>
-                    CS
+                    {avatarInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-cyber-text truncate">Carlos Silva</p>
-                    <p className="text-xs text-cyber-muted truncate">Administrador</p>
+                    <p className="text-sm font-semibold text-cyber-text truncate">{displayName}</p>
+                    <p className="text-xs text-cyber-muted truncate">{user?.email || ''}</p>
                   </div>
                 </div>
               </div>
 
               <div className="py-1">
                 <button
-                  onClick={() => { navigate('/usuarios'); setShowProfile(false) }}
+                  onClick={() => { navigate('/meu-perfil'); setShowProfile(false) }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-cyber-text hover:bg-cyber-cyan/5 transition-colors cursor-pointer"
                 >
                   <User size={15} className="text-cyber-muted" />
@@ -195,12 +207,15 @@ export default function Header({ onMenuClick }) {
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-cyber-text hover:bg-cyber-cyan/5 transition-colors cursor-pointer"
                 >
                   <Settings size={15} className="text-cyber-muted" />
-                  Configurações
+                  {(user?.perfil === 'admin' || user?.perfil === 'gestor') ? 'Configurações & Usuários' : 'Configurações'}
                 </button>
               </div>
 
               <div className="border-t border-cyber-cyan/10 py-1">
-                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-cyber-red hover:bg-cyber-red/5 transition-colors cursor-pointer">
+                <button
+                  onClick={() => { logout(); navigate('/login', { replace: true }) }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-cyber-red hover:bg-cyber-red/5 transition-colors cursor-pointer"
+                >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                   </svg>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, FileText, AlertTriangle, CheckSquare, DollarSign,
@@ -69,7 +70,7 @@ export default function Dashboard() {
   const tarefasAtrasadas    = tarefas.filter(t => t.status === 'atrasada').length
   const comissaoPrevistaMes = comissoes.filter(c => c.status === 'prevista').reduce((acc, c) => acc + c.valor, 0)
 
-  // ── Funil operacional: Cotação → Proposta → Pólise → Endosso ──
+  // ── Funil operacional: Cotação → Proposta → Apólice → Endosso ──
   const totalCotacoes        = cotacoes.length
   const cotacoesAprovadas    = cotacoes.filter(c => c.status === 'aprovada' || c.converted_proposal_id).length
   const cotacoesConvertidas  = cotacoes.filter(c => c.converted_proposal_id).length
@@ -85,7 +86,7 @@ export default function Dashboard() {
   const funilEtapas = [
     { label: 'Cotações',  valor: totalCotacoes,    cor: 'text-cyber-cyan',   to: '/cotacoes' },
     { label: 'Propostas', valor: propostasTotal,   cor: 'text-cyber-purple', to: '/propostas' },
-    { label: 'Pólises',   valor: apolicesEmitidas, cor: 'text-cyber-green',  to: '/apolices' },
+    { label: 'Apólices',   valor: apolicesEmitidas, cor: 'text-cyber-green',  to: '/apolices' },
     { label: 'Endossos',  valor: endossos.length,  cor: 'text-cyber-amber',  to: '/endossos' },
   ]
 
@@ -101,12 +102,30 @@ export default function Dashboard() {
     })
     .slice(0, 5)
 
-  const ranking = [
-    { nome: 'Pedro Lima',     meta: 60000, realizado: 55200, avatar: 'PL' },
-    { nome: 'Carlos Silva',   meta: 50000, realizado: 42500, avatar: 'CS' },
-    { nome: 'Ana Santos',     meta: 35000, realizado: 28700, avatar: 'AS' },
-    { nome: 'Roberto Alves',  meta: 30000, realizado: 19400, avatar: 'RA' },
-  ]
+  const mesAtual = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const anoMesAtual = new Date().toISOString().slice(0, 7)
+
+  const ranking = useMemo(() => {
+    function agrupar(lista) {
+      const por = {}
+      lista.forEach(a => {
+        const nome = a.responsavel || 'Sem responsável'
+        por[nome] = (por[nome] || 0) + (Number(a.premioBruto || a.premioLiquido || a.premio) || 0)
+      })
+      return por
+    }
+    let por = agrupar(apolices.filter(a => (a.dataEmissao || '').startsWith(anoMesAtual)))
+    if (!Object.keys(por).length) por = agrupar(apolices)
+    const sorted = Object.entries(por)
+      .map(([nome, realizado]) => ({
+        nome, realizado,
+        avatar: nome.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase()
+      }))
+      .sort((a, b) => b.realizado - a.realizado)
+      .slice(0, 5)
+    const max = sorted[0]?.realizado || 1
+    return sorted.map(u => ({ ...u, meta: max }))
+  }, [apolices, anoMesAtual])
 
   const rankGrads = [
     'linear-gradient(135deg,#f59e0b,#ec4899)',
@@ -165,7 +184,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xs font-display font-bold text-cyber-text tracking-wide uppercase">Funil do Seguro</h3>
-            <p className="text-[11px] text-cyber-muted mt-0.5">Cotação → Proposta → Pólise → Endosso</p>
+            <p className="text-[11px] text-cyber-muted mt-0.5">Cotação → Proposta → Apólice → Endosso</p>
           </div>
         </div>
 
@@ -195,11 +214,11 @@ export default function Dashboard() {
           </div>
           <div className="p-3 rounded-xl bg-cyber-surface/40 border border-cyber-border/40 text-center">
             <p className="text-lg font-bold text-cyber-purple">{pct(propostasConvertidas, propostasTotal)}%</p>
-            <p className="text-[11px] text-cyber-muted">Proposta → Pólise</p>
+            <p className="text-[11px] text-cyber-muted">Proposta → Apólice</p>
           </div>
           <div className="p-3 rounded-xl bg-cyber-surface/40 border border-cyber-border/40 text-center">
             <p className="text-lg font-bold text-cyber-amber">{pct(apolicesComEndosso, apolicesEmitidas)}%</p>
-            <p className="text-[11px] text-cyber-muted">Pólises com endosso</p>
+            <p className="text-[11px] text-cyber-muted">Apólices com endosso</p>
           </div>
         </div>
       </div>
@@ -209,9 +228,9 @@ export default function Dashboard() {
         {[
           { label: 'Cotações aprovadas', v: cotacoesAprovadas, c: 'text-cyber-green' },
           { label: 'Cotações convertidas', v: cotacoesConvertidas, c: 'text-cyber-cyan' },
-          { label: 'Propostas → pólise', v: propostasConvertidas, c: 'text-cyber-purple' },
-          { label: 'Pólises vigentes', v: apolicesVigentes, c: 'text-cyber-green' },
-          { label: 'Pólises c/ endosso', v: apolicesComEndosso, c: 'text-cyber-amber' },
+          { label: 'Propostas → apólice', v: propostasConvertidas, c: 'text-cyber-purple' },
+          { label: 'Apólices vigentes', v: apolicesVigentes, c: 'text-cyber-green' },
+          { label: 'Apólices c/ endosso', v: apolicesComEndosso, c: 'text-cyber-amber' },
           { label: 'Endossos em análise', v: endossosAnalise, c: 'text-cyber-cyan' },
         ].map(s => (
           <div key={s.label} className="glass rounded-2xl p-3 text-center">
@@ -355,7 +374,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-xs font-display font-bold text-cyber-text tracking-wide uppercase flex items-center gap-2">
             <Activity size={14} className="text-cyber-cyan" />
-            Ranking de Produção — Maio/2026
+            Ranking de Produção — {mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1)}
           </h3>
           <span className="hud-label">Meta do mês</span>
         </div>

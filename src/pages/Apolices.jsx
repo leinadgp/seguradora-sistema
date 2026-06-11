@@ -1,11 +1,12 @@
 ﻿import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, FileText, Paperclip, Upload, X as XIcon, Download, FilePen, ClipboardList } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, FileText, Paperclip, Upload, X as XIcon, Download, FilePen, ClipboardList, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Badge, { StatusBadge } from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
+import Pagination from '../components/ui/Pagination'
 import DynamicForm from '../components/ui/DynamicForm'
 import FluxoSeguro from '../components/ui/FluxoSeguro'
 import Timeline from '../components/ui/Timeline'
@@ -18,7 +19,6 @@ const statusOpcoes = ['ativa', 'a_vencer', 'em_renovacao', 'cancelada', 'suspens
 const statusLabel = { ativa: 'Ativa', a_vencer: 'A Vencer', em_renovacao: 'Em Renovação', cancelada: 'Cancelada', suspensa: 'Suspensa', vencida: 'Vencida', sinistrada: 'Sinistrada' }
 const formasPagamento = ['Boleto', 'Cartão de Crédito', 'Débito em Conta', 'PIX', 'Sem Prêmio']
 const formasCobrancaSgcor = ['Boleto', 'Cartão de Crédito', 'Débito em Conta', 'Sem Prêmio']
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves']
 
 
 const ABAS_FORM = ['Dados Principais', 'Dados do Seguro', 'Coberturas', 'Financeiro', 'Observações', 'Anexos']
@@ -72,7 +72,8 @@ export default function Apolices() {
   const { showToast } = useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: apolices, create, update } = useResource('apolices')
+  const { data: apolices, create, update, remove } = useResource('apolices')
+  const { data: usuarios } = useResource('usuarios')
   const fileInputRef = useRef(null)
   const { data: clientes } = useResource('clientes')
   const { data: seguradoras } = useResource('seguradoras')
@@ -90,6 +91,10 @@ export default function Apolices() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [abaForm, setAbaForm] = useState(0)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterTipo, filterVenc])
   const { getTipos, getSubcategorias, getRamo } = useCatalogo()
 
   const filtered = apolices.filter(a => {
@@ -100,9 +105,21 @@ export default function Apolices() {
     const matchVenc = filterVenc === 'Todos' || (filterVenc === '7' && a.diasParaVencer <= 7) || (filterVenc === '30' && a.diasParaVencer <= 30) || (filterVenc === '60' && a.diasParaVencer <= 60) || (filterVenc === '90' && a.diasParaVencer <= 90)
     return matchSearch && matchStatus && matchTipo && matchVenc
   })
+  const paginado = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   function openNew() { setForm(emptyForm); setIsEditing(false); setAbaForm(0); setShowModal(true) }
   function openEdit(a) { setForm({ ...emptyForm, ...a, anexos: a.anexos || [] }); setIsEditing(true); setAbaForm(0); setShowModal(true); setShowDetalhes(false) }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Apólice excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -160,6 +177,10 @@ export default function Apolices() {
   async function handleSave() {
     if (!form.cliente) { showToast('Selecione um cliente.', 'error'); return }
     if (!form.tipoSeguro) { showToast('Selecione o tipo de seguro.', 'error'); return }
+    if (form.coCorretagemAtiva) {
+      const total = parseFloat(form.percentualAttenti || 0) + parseFloat(form.percentualMega || 0)
+      if (Math.abs(total - 100) > 0.01) { showToast(`Co-corretagem: ${total.toFixed(1)}% — ATTENTI + MEGA devem somar 100%.`, 'error'); return }
+    }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form })
@@ -228,7 +249,7 @@ export default function Apolices() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cyber-border/20">
-                {filtered.map(a => (
+                {paginado.map(a => (
                   <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-cyber-text">{a.cliente}</p>
@@ -258,6 +279,7 @@ export default function Apolices() {
                       <div className="flex gap-1">
                         <button onClick={() => { setSelected(a); setShowDetalhes(true) }} className="p-1.5 text-cyber-muted hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg transition-colors"><Eye size={15} /></button>
                         <button onClick={() => { setSelected(a); openEdit(a) }} className="p-1.5 text-cyber-muted hover:text-cyber-muted hover:bg-slate-100 rounded-lg transition-colors"><Edit2 size={15} /></button>
+                        <button onClick={() => setConfirmDelete(a)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -268,7 +290,7 @@ export default function Apolices() {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
-            {filtered.map(a => (
+            {paginado.map(a => (
               <div key={a.id} className="bg-cyber-card rounded-2xl p-4 shadow-card border border-cyber-border/40">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -285,15 +307,32 @@ export default function Apolices() {
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => { setSelected(a); setShowDetalhes(true) }} className="flex-1 py-1.5 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg text-center transition-colors">Ver detalhes</button>
                   <button onClick={() => { setSelected(a); openEdit(a) }} className="flex-1 py-1.5 text-sm text-cyber-muted hover:bg-slate-100 rounded-lg text-center transition-colors">Editar</button>
+                  <button onClick={() => setConfirmDelete(a)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
           </div>
+        <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} />
         </>
       )}
 
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a apólice <strong className="text-cyber-red">"{confirmDelete.numero || confirmDelete.cliente}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
+
       {/* Modal Detalhes Apólice */}
-      <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.numero ? `Pólise ${selected.numero}` : 'Detalhes da Apólice'} size="lg"
+      <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.numero ? `Apólice ${selected.numero}` : 'Detalhes da Apólice'} size="lg"
         footer={
           <div className="flex flex-wrap gap-2 justify-between">
             <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Voltar</Button>
@@ -431,7 +470,7 @@ export default function Apolices() {
               <div>
                 <label className="hud-label mb-1">Corretor responsável</label>
                 <select value={form.corretor} onChange={e => setForm(f => ({ ...f, corretor: e.target.value }))} className={inputCls}>
-                  {responsaveis.map(r => <option key={r}>{r}</option>)}
+                  {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
                 </select>
               </div>
               <div>

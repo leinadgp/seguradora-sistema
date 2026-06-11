@@ -1,11 +1,12 @@
 ﻿import { useState } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, Building2, ExternalLink } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, Building2, ExternalLink, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarCNPJ, validarEmail } from '../lib/validators'
 
 const segmentos = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida', 'Saúde', 'Frota', 'Rural', 'RC', 'Garantia', 'Engenharia', 'Odontológico', 'Viagem']
 
@@ -15,21 +16,35 @@ function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency'
 
 export default function Seguradoras() {
   const { showToast } = useApp()
-  const { data: seguradoras, create, update } = useResource('seguradoras')
+  const { data: seguradoras, create, update, remove } = useResource('seguradoras')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDetalhes, setShowDetalhes] = useState(false)
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = seguradoras.filter(s => !search || s.nome.toLowerCase().includes(search.toLowerCase()))
 
   function openNew() { setForm(emptyForm); setIsEditing(false); setShowModal(true) }
   function openEdit(s) { setForm({ ...emptyForm, ...s }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
 
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Seguradora excluída!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
+  }
+
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome da seguradora.', 'error'); return }
+    if (form.cnpj && !validarCNPJ(form.cnpj)) { showToast('CNPJ inválido.', 'error'); return }
+    if (form.emailGerente && !validarEmail(form.emailGerente)) { showToast('E-mail do gerente inválido.', 'error'); return }
     try {
       if (isEditing) {
         await update(selected.id, { ...selected, ...form })
@@ -84,10 +99,25 @@ export default function Seguradoras() {
             <div className="flex gap-2">
               <button onClick={() => { setSelected(s); setShowDetalhes(true) }} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg py-1.5 transition-colors"><Eye size={14} /> Ver</button>
               <button onClick={() => { setSelected(s); openEdit(s) }} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-muted hover:bg-slate-100 rounded-lg py-1.5 transition-colors"><Edit2 size={14} /> Editar</button>
+              <button onClick={() => setConfirmDelete(s)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}
       </div>
+
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir a seguradora <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Detalhes */}
       <Modal isOpen={showDetalhes && !!selected} onClose={() => setShowDetalhes(false)} title={selected?.nome} size="md"

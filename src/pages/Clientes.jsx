@@ -1,17 +1,18 @@
-﻿import { useState } from 'react'
-import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2 } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
+import Pagination from '../components/ui/Pagination'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { validarCPF, validarCNPJ, validarEmail, validarTelefone, validarCEP } from '../lib/validators'
 
 const tipoOpcoes = ['Todos', 'PF', 'PJ']
 const statusOpcoes = ['Todos', 'ativo', 'inativo', 'prospect']
 const origens = ['Indicação', 'Site', 'Redes Sociais', 'Prospecção', 'WhatsApp', 'Ligação ativa']
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 
 const emptyForm = {
   tipo: 'PF', nome: '', nomeFantasia: '', apelido: '', cpf: '', cnpj: '', rg: '', dataNascimento: '', sexo: '',
@@ -31,7 +32,8 @@ function fmtMoeda(v) {
 
 export default function Clientes() {
   const { showToast } = useApp()
-  const { data: clientes, create, update } = useResource('clientes')
+  const { data: clientes, create, update, remove } = useResource('clientes')
+  const { data: usuarios } = useResource('usuarios')
   const { data: produtores } = useResource('produtores')
   const { data: seguradoras } = useResource('seguradoras')
   const { data: apolices } = useResource('apolices')
@@ -47,6 +49,10 @@ export default function Clientes() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('dados')
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
+  useEffect(() => { setPage(1) }, [search, filterTipo, filterStatus])
 
   const filtered = clientes.filter(c => {
     const q = search.toLowerCase()
@@ -55,6 +61,7 @@ export default function Clientes() {
     const matchStatus = filterStatus === 'Todos' || c.status === filterStatus
     return matchSearch && matchTipo && matchStatus
   })
+  const paginado = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   function openNew() {
     setForm(emptyForm)
@@ -73,6 +80,17 @@ export default function Clientes() {
     setSelected(c)
     setActiveTab('dados')
     setShowDetalhes(true)
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Cliente excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) { setShowDetalhes(false); setSelected(null) }
+    } catch {
+      showToast('Erro ao excluir.', 'error')
+    }
   }
 
   const onlyDigits = (v) => (v || '').replace(/\D/g, '')
@@ -96,6 +114,11 @@ export default function Clientes() {
       const duplicado = clientes.find(c => onlyDigits(c.cnpj) === cnpjAtual && c.id !== selected?.id)
       if (duplicado) { showToast(`Já existe um cliente com este CNPJ: ${duplicado.nome}.`, 'error'); return }
     }
+    if (form.tipo === 'PF' && form.cpf && !validarCPF(form.cpf)) { showToast('CPF inválido.', 'error'); return }
+    if (form.tipo === 'PJ' && form.cnpj && !validarCNPJ(form.cnpj)) { showToast('CNPJ inválido.', 'error'); return }
+    if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
+    if (form.telefone && !validarTelefone(form.telefone)) { showToast('Telefone inválido.', 'error'); return }
+    if (form.cep && !validarCEP(form.cep)) { showToast('CEP inválido.', 'error'); return }
     const endereco = { cep: form.cep, rua: form.rua, numero: form.numero, complemento: form.complemento, bairro: form.bairro, cidade: form.cidade, estado: form.estado }
     try {
       if (isEditing) {
@@ -168,8 +191,9 @@ export default function Clientes() {
       {filtered.length === 0 ? (
         <EmptyState icon={<User size={28} />} title="Nenhum cliente encontrado" description="Tente ajustar os filtros ou cadastre um novo cliente." action={<Button onClick={openNew} icon={<Plus size={16} />}>Novo Cliente</Button>} />
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map(c => (
+          {paginado.map(c => (
             <div key={c.id} className="bg-cyber-card rounded-2xl p-4 shadow-card border border-cyber-border/40 hover:shadow-card-md hover:-translate-y-0.5 transition-all duration-200">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -210,10 +234,30 @@ export default function Clientes() {
                 <button onClick={() => { setSelected(c); openEdit(c) }} className="flex-1 flex items-center justify-center gap-1.5 text-sm text-cyber-muted hover:bg-slate-100 active:bg-slate-200 rounded-lg py-1.5 transition-colors cursor-pointer">
                   <Edit2 size={14} /> Editar
                 </button>
+                <button onClick={() => setConfirmDelete(c)} className="p-1.5 text-cyber-muted hover:text-cyber-red hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}
         </div>
+        <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} />
+        </>
+      )}
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o cliente <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
       )}
 
       {/* Modal Cadastro/Edição */}
@@ -422,7 +466,7 @@ export default function Clientes() {
               </FormField>
               <FormField label="Responsável">
                 <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
-                  {responsaveis.map(r => <option key={r}>{r}</option>)}
+                  {usuarios.map(u => <option key={u.id}>{u.nome}</option>)}
                 </select>
               </FormField>
               <FormField label="Origem">

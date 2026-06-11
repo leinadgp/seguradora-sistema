@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { input as inputCls, label as labelCls } from '../lib/styles'
-import { Plus, Search, Eye, Edit2, FilePen, Download, Shield } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, FilePen, Download, Shield, Trash2 } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
@@ -23,10 +23,8 @@ const tiposEndosso = [
   'Outro',
 ]
 
-const TIPOS_COM_TERMO = ['Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial', 'Risco Engenharia', 'Responsabilidade Civil']
-const TIPOS_CO_CORRETAGEM = ['Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial', 'Risco Engenharia', 'Responsabilidade Civil']
+const TIPOS_COM_TERMO_E_CO_CORRETAGEM = ['Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial', 'Risco Engenharia', 'Responsabilidade Civil']
 
-const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 
 const emptyForm = {
   apoliceId: '', apolice: '', clienteId: '', cliente: '',
@@ -121,7 +119,8 @@ export default function Endossos() {
   const { showToast } = useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: endossos, create, update } = useResource('endossos')
+  const { data: endossos, create, update, remove } = useResource('endossos')
+  const { data: usuarios } = useResource('usuarios')
   const { data: apolices, update: updateApolice } = useResource('apolices')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
@@ -132,6 +131,7 @@ export default function Endossos() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [aba, setAba] = useState(0)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtered = endossos.filter(e => {
     const q = search.toLowerCase()
@@ -214,6 +214,10 @@ export default function Endossos() {
     if (!form.apolice)       { showToast('Selecione a apólice.', 'error'); return }
     if (!form.descricao)     { showToast('Preencha a descrição do endosso.', 'error'); return }
     if (!form.dataRequisicao){ showToast('Preencha a data de requisição.', 'error'); return }
+    if (form.coCorretagemAtiva) {
+      const total = parseFloat(form.percentualAttenti || 0) + parseFloat(form.percentualMega || 0)
+      if (Math.abs(total - 100) > 0.01) { showToast(`Co-corretagem: ${total.toFixed(1)}% — ATTENTI + MEGA devem somar 100%.`, 'error'); return }
+    }
 
     const payload = {
       ...form,
@@ -233,14 +237,25 @@ export default function Endossos() {
         const id = Date.now().toString()
         const numero = genNumero('END', endossos)
         await create({ ...payload, id, numero, endorsement_number: numero, dataEndosso: todayISO() })
-        await logEvento('endosso', id, 'Endosso criado', `Endosso ${numero} (${payload.tipoEndosso}) criado na pólise ${payload.apolice}.`)
-        if (payload.apoliceId) await logEvento('apolice', payload.apoliceId, 'Endosso adicionado', `Endosso ${numero} (${payload.tipoEndosso}) vinculado à pólise.`)
+        await logEvento('endosso', id, 'Endosso criado', `Endosso ${numero} (${payload.tipoEndosso}) criado na apólice ${payload.apolice}.`)
+        if (payload.apoliceId) await logEvento('apolice', payload.apoliceId, 'Endosso adicionado', `Endosso ${numero} (${payload.tipoEndosso}) vinculado à apólice.`)
         if (['aprovado', 'aplicado'].includes(payload.status)) await marcarApoliceComEndosso(payload.apoliceId, numero)
         showToast(`Endosso ${numero} registrado!`)
       }
       setShowModal(false)
     } catch {
       showToast('Erro ao salvar. Verifique a conexão com o servidor.', 'error')
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      showToast('Endosso excluído!')
+      setConfirmDelete(null)
+      if (selected?.id === id) setShowDetalhes(false)
+    } catch {
+      showToast('Erro ao excluir.', 'error')
     }
   }
 
@@ -303,7 +318,7 @@ export default function Endossos() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Total',          display: filtered.length,    color: 'text-cyber-text' },
+          { label: 'Total',          display: endossos.length,    color: 'text-cyber-text' },
           { label: 'Em Andamento',   display: pendentes,           color: 'text-cyber-amber' },
           { label: 'Concluídos',     display: aprovados,           color: 'text-cyber-green' },
           { label: 'Rejeitados',     display: filtered.filter(e => e.status === 'rejeitado').length, color: 'text-cyber-red' },
@@ -319,7 +334,7 @@ export default function Endossos() {
 
       {/* Tabela */}
       {filtered.length === 0 ? (
-        <EmptyState icon={FilePen} title="Nenhum endosso encontrado" description="Ajuste os filtros ou registre um novo endosso." />
+        <EmptyState icon={<FilePen size={28} />} title="Nenhum endosso encontrado" description="Ajuste os filtros ou registre um novo endosso." />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -361,6 +376,7 @@ export default function Endossos() {
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openDetalhes(e)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Ver detalhes"><Eye size={13} /></button>
                         <button onClick={() => { setSelected(e); openEdit(e) }} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Editar"><Edit2 size={13} /></button>
+                        <button onClick={() => setConfirmDelete(e)} className="p-1.5 rounded-lg hover:bg-cyber-red/10 text-cyber-muted hover:text-cyber-red transition-colors cursor-pointer" title="Excluir"><Trash2 size={13} /></button>
                       </div>
                     </td>
                   </tr>
@@ -395,7 +411,7 @@ export default function Endossos() {
           <div className="flex gap-2 flex-wrap justify-between w-full">
             <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Voltar</Button>
             <div className="flex gap-2">
-              {(selected?.policy_id || selected?.apoliceId) && <Button variant="secondary" icon={<Shield size={14} />} onClick={() => navigate(`/apolices?focus=${selected.policy_id || selected.apoliceId}`)}>Ver Pólise</Button>}
+              {(selected?.policy_id || selected?.apoliceId) && <Button variant="secondary" icon={<Shield size={14} />} onClick={() => navigate(`/apolices?focus=${selected.policy_id || selected.apoliceId}`)}>Ver Apólice</Button>}
               <Button onClick={() => openEdit(selected)}>Editar</Button>
             </div>
           </div>
@@ -438,7 +454,7 @@ export default function Endossos() {
             </div>
 
             <div><p className={labelCls}>Descrição</p><p className="text-sm text-cyber-text">{selected.descricao}</p></div>
-            <div><p className={labelCls}>Motivação</p><p className="text-sm text-cyber-text">{selected.motivacao}</p></div>
+            {selected.motivacao && <div><p className={labelCls}>Motivação</p><p className="text-sm text-cyber-text">{selected.motivacao}</p></div>}
             {selected.observacoes && <div><p className={labelCls}>Observações</p><p className="text-sm text-cyber-muted">{selected.observacoes}</p></div>}
 
             <div>
@@ -455,6 +471,21 @@ export default function Endossos() {
           </div>
         )}
       </Modal>
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Modal isOpen title="Confirmar exclusão" onClose={() => setConfirmDelete(null)} size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmDelete.id)}>Excluir</Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-cyber-text">Excluir o endosso <strong className="text-cyber-red">{confirmDelete.numero}</strong>?</p>
+          <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
 
       {/* Modal Formulário */}
       <Modal
@@ -527,7 +558,7 @@ export default function Endossos() {
             <div>
               <label className={labelCls}>Responsável</label>
               <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
-                {responsaveis.map(r => <option key={r} value={r}>{r}</option>)}
+                {usuarios.map(u => <option key={u.id} value={u.nome}>{u.nome}</option>)}
               </select>
             </div>
           </div>
@@ -564,7 +595,7 @@ export default function Endossos() {
                 className={inputCls}
               />
             </div>
-            {TIPOS_COM_TERMO.includes(form.tipoSeguro) && (
+            {TIPOS_COM_TERMO_E_CO_CORRETAGEM.includes(form.tipoSeguro) && (
               <div>
                 <label className={labelCls}>Termo Aditivo</label>
                 <input
@@ -606,7 +637,7 @@ export default function Endossos() {
                 )}
               </div>
             </div>
-            {TIPOS_CO_CORRETAGEM.includes(form.tipoSeguro) && (
+            {TIPOS_COM_TERMO_E_CO_CORRETAGEM.includes(form.tipoSeguro) && (
               <div className="space-y-3">
                 <div>
                   <label className="flex items-center gap-2 cursor-pointer select-none">
