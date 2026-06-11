@@ -30,6 +30,8 @@ app.get('/api/:entity', async (req, res) => {
   if (!ENTITIES[entity]) return res.status(404).json({ error: 'Entity not found' })
   const { data, error } = await supabase.from(entity).select('data')
   if (error) return res.status(500).json({ error: error.message })
+  // Fallback para dados locais quando Supabase está vazio (apenas seguros_catalogo)
+  if (!data.length && entity === 'seguros_catalogo') return res.json(catalogoSeguros)
   res.json(data.map(r => r.data))
 })
 

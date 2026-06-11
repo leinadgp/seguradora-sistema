@@ -1,1 +1,14 @@
+# Vercel
 .vercel
+
+# Variáveis de ambiente (NUNCA commitar — contém SUPABASE_KEY)
+.env
+.env.local
+.env.production
+
+# Dependências
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*

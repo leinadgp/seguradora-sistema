@@ -2,15 +2,15 @@ import { useMemo } from 'react'
 import useResource from './useResource'
 
 // Lista de fallback usada enquanto o catálogo ainda não carregou da API.
-// Garante que os selects nunca fiquem vazios na primeira renderização.
+// Reflete o portfolio ativo da ATTENTI — atualizar junto com catalogoSeguros.js.
 const TIPOS_FALLBACK = [
-  'Auto', 'Moto', 'Caminhão', 'Frota',
-  'Residencial', 'Condomínio', 'Empresarial',
-  'Vida Individual', 'Vida Empresarial',
-  'Saúde', 'Odontológico',
-  'Viagem', 'Equipamentos', 'Celular', 'Rural', 'Náutico',
-  'Garantia', 'Fiança', 'RC',
-  'Previdência', 'Consórcio',
+  'Auto', 'Frota',
+  'Patrimoniais', 'Equipamentos', 'Eventos',
+  'Vida PF', 'Vida PJ',
+  'Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial',
+  'Fiança Locatícia', 'Capitalização Aluguel',
+  'Risco Engenharia', 'Responsabilidade Civil',
+  'Diversos', 'Consórcio',
 ]
 
 /**

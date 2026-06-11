@@ -11,15 +11,15 @@ const statusOpcoes = ['solicitado', 'em_atendimento', 'concluido', 'cancelado']
 const prioridades = ['Normal', 'Alta', 'Urgente']
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 
-const tiposAssistencia = ['Auto 24h', 'Residencial', 'Saúde', 'Funeral', 'Jurídica', 'Viagem']
+const tiposAssistencia = ['Auto 24h', 'Residencial / Patrimonial', 'Funeral', 'Equipamentos', 'Jurídica', 'Outros']
 
 const servicosPorTipo = {
-  'Auto 24h':   ['Reboque', 'Chaveiro', 'Troca de Pneu', 'Pane Seca', 'Bateria', 'Vidros', 'Carro Reserva', 'Pane Mecânica', 'Orientação de Guincho', 'Outros'],
-  'Residencial':['Chaveiro', 'Eletricista', 'Encanador', 'Vidraceiro', 'Dedetização', 'Pequenos Reparos', 'Limpeza de Caixa d\'água', 'Outros'],
-  'Saúde':      ['Orientação Médica', 'UTI Móvel', 'Remoção Hospitalar', 'Desconto em Farmácia', 'Telemedicina', 'Outros'],
-  'Funeral':    ['Translado', 'Urna Funerária', 'Velório', 'Cremação', 'Orientação Funerária', 'Outros'],
-  'Jurídica':   ['Orientação Jurídica', 'Advogado de Trânsito', 'Defesa em Acidente', 'Outros'],
-  'Viagem':     ['Assistência Médica Internacional', 'Extravio de Bagagem', 'Cancelamento de Voo', 'Atraso de Voo', 'Retorno Antecipado', 'Outros'],
+  'Auto 24h':              ['Reboque', 'Chaveiro', 'Troca de Pneu', 'Pane Seca', 'Bateria', 'Vidros', 'Carro Reserva', 'Pane Mecânica', 'Orientação de Guincho', 'Outros'],
+  'Residencial / Patrimonial': ['Chaveiro', 'Eletricista', 'Encanador', 'Vidraceiro', 'Dedetização', 'Pequenos Reparos', 'Vistoria', 'Outros'],
+  'Funeral':               ['Translado', 'Urna Funerária', 'Velório', 'Cremação', 'Orientação Funerária', 'Outros'],
+  'Equipamentos':          ['Reparo Técnico', 'Substituição de Peça', 'Calibração', 'Manutenção Preventiva', 'Outros'],
+  'Jurídica':              ['Orientação Jurídica', 'Advogado de Trânsito', 'Defesa em Acidente', 'Outros'],
+  'Outros':                ['Serviço Solicitado', 'Outros'],
 }
 
 const emptyForm = {

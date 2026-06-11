@@ -24,6 +24,9 @@ const ABAS = ['Dados Gerais', 'Dados do Seguro', 'Valores', 'Observações']
 const emptyForm = {
   cliente: '', tipoSeguro: 'Auto', subcategorias: [], ramo: '',
   seguradorasCotadas: [], melhorValor: '', valorApresentado: '',
+  premioLiquido: '', premioBruto: '',
+  percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
+  coCorretagem: false,
   formaPagamento: '12x no cartão', responsavel: 'Carlos Silva', dataSolicitacao: '',
   dataEnvio: '', dataPrevRetorno: '', status: 'em_analise', motivoPerda: '', observacoes: '',
 }
@@ -51,7 +54,18 @@ export default function Propostas() {
   const [isEditing, setIsEditing] = useState(false)
   const [showConvertir, setShowConvertir] = useState(false)
   const [aba, setAba] = useState(0)
-  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
+  const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
+
+  function aplicarComissaoDoTipo(tipo, formAtual = {}) {
+    const entrada = getEntrada(tipo)
+    if (!entrada) return formAtual
+    return {
+      ...formAtual,
+      percentualComissaoAttenti: String(entrada.comissaoAttenti ?? ''),
+      coCorretagem: !!entrada.coCorretagem,
+      percentualComissaoMega: entrada.coCorretagem ? String(entrada.comissaoMega ?? 20) : '',
+    }
+  }
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -384,7 +398,14 @@ export default function Propostas() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="hud-label mb-1">Tipo de seguro *</label>
-                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], ramo: getRamo(e.target.value) }))} className={inputCls}>
+                <select
+                  value={form.tipoSeguro}
+                  onChange={e => {
+                    const tipo = e.target.value
+                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], ramo: getRamo(tipo) }))
+                  }}
+                  className={inputCls}
+                >
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
@@ -467,6 +488,28 @@ export default function Propostas() {
                   <input type="number" value={form.valorApresentado} onChange={e => setForm(f => ({ ...f, valorApresentado: e.target.value }))} className={inputCls + ' pl-8'} placeholder="0,00" />
                 </div>
               </div>
+              <div>
+                <label className="hud-label mb-1">Prêmio líquido (R$)</label>
+                <input type="number" value={form.premioLiquido} onChange={e => setForm(f => ({ ...f, premioLiquido: e.target.value }))} className={inputCls} placeholder="0,00" />
+              </div>
+              <div>
+                <label className="hud-label mb-1">Prêmio bruto (R$)</label>
+                <input type="number" value={form.premioBruto} onChange={e => setForm(f => ({ ...f, premioBruto: e.target.value }))} className={inputCls} placeholder="0,00" />
+              </div>
+              <div>
+                <label className="hud-label mb-1">Comissão total (%)</label>
+                <input type="number" step="0.01" value={form.percentualComissaoTotal} onChange={e => setForm(f => ({ ...f, percentualComissaoTotal: e.target.value }))} className={inputCls} placeholder="Ex: 15" />
+              </div>
+              <div>
+                <label className="hud-label mb-1">Comissão ATTENTI (%) <span className="text-cyber-cyan font-semibold">{form.percentualComissaoAttenti ? `— ${form.percentualComissaoAttenti}%` : ''}</span></label>
+                <input type="number" step="0.01" value={form.percentualComissaoAttenti} onChange={e => setForm(f => ({ ...f, percentualComissaoAttenti: e.target.value }))} className={inputCls + ' bg-cyber-cyan/5'} placeholder="Auto-preenchido pelo tipo" />
+              </div>
+              {form.coCorretagem && (
+                <div>
+                  <label className="hud-label mb-1">Co-corretagem Grupo MEGA (%)</label>
+                  <input type="number" step="0.01" value={form.percentualComissaoMega} onChange={e => setForm(f => ({ ...f, percentualComissaoMega: e.target.value }))} className={inputCls + ' bg-violet-500/5'} />
+                </div>
+              )}
               <div>
                 <label className="hud-label mb-1">Forma de pagamento</label>
                 <select value={form.formaPagamento} onChange={e => setForm(f => ({ ...f, formaPagamento: e.target.value }))} className={inputCls}>

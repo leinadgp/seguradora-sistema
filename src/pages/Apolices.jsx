@@ -14,8 +14,10 @@ import useResource from '../hooks/useResource'
 import { insuranceTypeFields } from '../data/insuranceFields'
 import { logEvento } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
-const statusOpcoes = ['ativa', 'vencida', 'cancelada', 'em_renovacao', 'suspensa', 'aguardando_pagamento', 'aguardando_emissao']
-const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto', 'PIX']
+const statusOpcoes = ['ativa', 'a_vencer', 'em_renovacao', 'cancelada', 'suspensa', 'vencida', 'sinistrada']
+const statusLabel = { ativa: 'Ativa', a_vencer: 'A Vencer', em_renovacao: 'Em Renovação', cancelada: 'Cancelada', suspensa: 'Suspensa', vencida: 'Vencida', sinistrada: 'Sinistrada' }
+const formasPagamento = ['Boleto', 'Cartão de Crédito', 'Débito em Conta', 'PIX', 'Sem Prêmio']
+const formasCobrancaSgcor = ['Boleto', 'Cartão de Crédito', 'Débito em Conta', 'Sem Prêmio']
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves']
 
 
@@ -26,20 +28,32 @@ const emptyForm = {
   seguradoraId: '', seguradora: '', numero: '', numeroProposta: '',
   corretor: 'Carlos Silva', status: 'ativa', dataEmissao: '', inicioVigencia: '', fimVigencia: '', dataRenovacao: '', canal: 'Corretor',
   premioBruto: '', premioLiquido: '', formaPagamento: 'Boleto', parcelas: '12', valorParcela: '', vencimentoPrimeiraParcela: '',
-  diaVencimento: '1', comissaoPercentual: '15', comissaoValor: '', statusComissao: 'prevista', observacoes: '', anexos: [],
-  // Auto
+  diaVencimento: '1', comissaoPercentual: '15', comissaoValor: '', statusComissao: 'prevista',
+  formaCobranca: 'Boleto', coCorretagemAtiva: false, percentualAttenti: '', percentualMega: '',
+  observacoes: '', anexos: [],
+  // Auto / Frota
   marca: '', modelo: '', anoFab: '', anoMod: '', placa: '', chassi: '', renavam: '', valorFipe: '',
-  uso: 'Lazer', garagem: true, condutorPrincipal: '', classeBonus: '1', coberturaTotal: true, coberturaRca: '', assistencia24h: true, carroReserva: false, franquia: '',
-  // Residencial
-  tipoImovel: 'Apartamento', enderecoImovel: '', areaConstruida: '', tipoConstrucao: 'Alvenaria', valorImovel: '',
-  coberturaIncendio: '', coberturaRoubo: '', coberturaDanosEletricos: '', coberturaRC: '',
-  // Empresarial
-  cnpjEmpresa: '', atividadeEmpresa: '', enderecoSegurado: '', areaEstabelecimento: '', numFuncionarios: '', faturamentoMensal: '',
-  cobIncendio: '', cobRoubo: '', cobEquipamentos: '', cobRCEmpresarial: '', cobLucros: false,
-  // Vida
-  seguradoPrincipal: '', capitalSegurado: '', cobMorte: true, cobInvalidez: true, cobDoencasGraves: false, cobFuneral: false,
-  // Saúde
-  titular: '', qtdVidas: '1', operadora: '', tipoPlano: '', abrangencia: 'Nacional', coparticipacao: false, acomodacao: 'Enfermaria', valorMensal: '',
+  uso: 'Lazer', garagem: true, condutorPrincipal: '', classeBonus: '1', coberturaTotal: true, coberturaRca: '',
+  coberturaRcf: '', coberturaApp: '', assistencia24h: true, carroReserva: false, franquia: '',
+  // Garantia / Licitante / Judicial (campos compartilhados)
+  modalidade: '', razaoSocialSegurado: '', cpfCnpjSegurado: '', razaoSocialTomador: '', cpfCnpjTomador: '',
+  contrato: '', processo: '', edital: '', objetoContrato: '', valorContrato: '', valorEstimadoContrato: '',
+  isTotal: '', isContrato: '', isGarantiaAdicional: '', percentualGarantia: '',
+  clausulaGarantia: '', numeroPaginaClausula: '', condicoesParticulares: '',
+  inicioVigenciaContrato: '', fimVigenciaContrato: '',
+  // Judicial
+  numeroProcesso: '', cda: '', tipoAcao: '', tribunal: '', vara: '',
+  // Risco Engenharia / RC
+  beneficiario: '', cnpjBeneficiario: '', lmi: '', enderecoRisco: '', objetoRE: '',
+  // Fiança Locatícia
+  imobiliaria: '', enderecoImovelFianca: '', cobAluguel: '', cobIPTU: '', cobAgua: '',
+  cobLuz: '', cobCondominio: '', cobGas: '', cobDanos: '', cobMultaRescisao: '', cobPintura: '',
+  // Vida PF / Vida PJ
+  beneficiarioVida: '', assistenciaFuneral: '',
+  // Capitalização
+  prazoMeses: '', percentualCapitalizacao: '',
+  // Consórcio
+  creditoConsorcio: '', prazoConsorcio: '', lancePrevisto: '',
 }
 
 
@@ -88,7 +102,7 @@ export default function Apolices() {
   })
 
   function openNew() { setForm(emptyForm); setIsEditing(false); setAbaForm(0); setShowModal(true) }
-  function openEdit(a) { setForm({ ...emptyForm, ...a, anexos: a.anexos || [], ...(a.autoData || {}), ...(a.residencialData || {}), ...(a.empresarialData || {}), ...(a.saudeData || {}) }); setIsEditing(true); setAbaForm(0); setShowModal(true); setShowDetalhes(false) }
+  function openEdit(a) { setForm({ ...emptyForm, ...a, anexos: a.anexos || [] }); setIsEditing(true); setAbaForm(0); setShowModal(true); setShowDetalhes(false) }
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -173,11 +187,11 @@ export default function Apolices() {
         <div className="flex flex-wrap gap-2 shrink-0">
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
             <option value="todos">Todos os status</option>
-            {statusOpcoes.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {statusOpcoes.map(s => <option key={s} value={s}>{statusLabel[s] || s}</option>)}
           </select>
           <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
             <option>Todos</option>
-            {tiposSeguros.map(t => <option key={t}>{t}</option>)}
+            {getTipos().map(t => <option key={t}>{t}</option>)}
           </select>
           <select value={filterVenc} onChange={e => setFilterVenc(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
             <option>Todos</option>
@@ -423,7 +437,7 @@ export default function Apolices() {
               <div>
                 <label className="hud-label mb-1">Status</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
-                  {statusOpcoes.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {statusOpcoes.map(s => <option key={s} value={s}>{statusLabel[s] || s}</option>)}
                 </select>
               </div>
               <div><label className="hud-label mb-1">Data de emissão</label><input type="date" value={form.dataEmissao} onChange={e => setForm(f => ({ ...f, dataEmissao: e.target.value }))} className={inputCls} /></div>
@@ -497,6 +511,30 @@ export default function Apolices() {
                 <option value="atrasada">Atrasada</option>
               </select>
             </div>
+            <div>
+              <label className="hud-label mb-1">Forma de cobrança (SGCOR)</label>
+              <select value={form.formaCobranca} onChange={e => setForm(f => ({ ...f, formaCobranca: e.target.value }))} className={inputCls}>
+                {formasCobrancaSgcor.map(fc => <option key={fc}>{fc}</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={!!form.coCorretagemAtiva} onChange={e => setForm(f => ({ ...f, coCorretagemAtiva: e.target.checked, percentualAttenti: e.target.checked ? (f.percentualAttenti || '80') : '', percentualMega: e.target.checked ? (f.percentualMega || '20') : '' }))} className="w-4 h-4 accent-cyber-cyan" />
+                <span className="text-sm font-medium text-cyber-text">Co-corretagem ATTENTI / MEGA</span>
+              </label>
+            </div>
+            {form.coCorretagemAtiva && (
+              <>
+                <div>
+                  <label className="hud-label mb-1">ATTENTI % (co-corretagem)</label>
+                  <input type="number" value={form.percentualAttenti} onChange={e => setForm(f => ({ ...f, percentualAttenti: e.target.value }))} className={inputCls} placeholder="80" />
+                </div>
+                <div>
+                  <label className="hud-label mb-1">MEGA % (co-corretagem)</label>
+                  <input type="number" value={form.percentualMega} onChange={e => setForm(f => ({ ...f, percentualMega: e.target.value }))} className={inputCls} placeholder="20" />
+                </div>
+              </>
+            )}
           </div>
         )}
 

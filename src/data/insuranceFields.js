@@ -2,6 +2,21 @@ const marcasAuto = ['Volkswagen', 'Fiat', 'Chevrolet', 'Ford', 'Toyota', 'Hyunda
 
 export const insuranceTypeFields = {
   'Auto': {
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+CARRO ZERO: ( ) SIM ( ) NÃO
+VEÍCULO: {{marca}} {{modelo}} | PLACA: {{placa}} | ANO: {{anoFab}}/{{anoMod}} | CHASSI: {{chassi}} | RENAVAM: {{renavam}} | COR: | COMBUSTÍVEL: {{combustivel}}
+CONDUTOR PRINCIPAL: {{condutorPrincipal}} | CPF: {{cpfCondutor}}
+ENDEREÇO PERNOITE: {{cepCondutor}}
+COBERTURAS E VALORES:
+  DANOS MATERIAIS: R$ {{coberturaRca}} / DANOS CORPORAIS: R$ {{coberturaRcf}} / DANOS MORAIS: / APP MORTE/INVALIDEZ: R$ {{coberturaApp}}
+  ASSISTÊNCIA: ( ) Básica ( ) Intermediária ( ) Completa
+  VIDROS: ( ) Básico ( ) Completo
+  PEQUENOS REPAROS: ( ) Sim ( ) Não
+  CARRO RESERVA: ( ) 7 dias ( ) 15 dias ( ) 30 dias ( ) Não
+  AR CONDICIONADO: ( ) Sim ( ) Não
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO LÍQUIDO: R$ {{premioLiquido}} | PRÊMIO BRUTO: R$ {{premioBruto}}`,
     sections: [
       {
         id: 'veiculo',
@@ -125,6 +140,14 @@ export const insuranceTypeFields = {
   },
 
   'Frota': {
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+[Para cada veículo — incluir planilha anexa]
+  VEÍCULO / PLACA / ANO / CHASSI / RENAVAM / COR / COMBUSTÍVEL
+  CONDUTOR PRINCIPAL: {{condutorPrincipal}} / CPF: {{cpfCondutor}} / ENDEREÇO PERNOITE: {{cepCondutor}}
+COBERTURAS E VALORES:
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO LÍQUIDO: R$ {{premioLiquido}} | PRÊMIO BRUTO: R$ {{premioBruto}}`,
     sections: [
       {
         id: 'frota',
@@ -724,6 +747,668 @@ export const insuranceTypeFields = {
         ],
       },
     ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+TIPO DE CONSÓRCIO: {{tipoConsorcio}}
+VALOR DO CRÉDITO SOLICITADO CLIENTE: R$ {{valorCreditoConsorcio}}
+NÚMERO DE MESES: {{prazoConsorcio}}
+--- SIMULAÇÃO ---
+COMISSÃO TOTAL %: 1,5 fixo | COMISSÃO ATTENTI %: 1,5 | PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // TIPOS ATTENTI — adicionados conforme Manual de Operações 2026
+  // ══════════════════════════════════════════════════════════════
+
+  'Patrimoniais': {
+    sections: [
+      {
+        id: 'risco_pat',
+        title: 'Endereço do Risco',
+        fields: [
+          { key: 'enderecoRisco', label: 'Endereço do risco', type: 'text', required: true, colSpan: 2 },
+          { key: 'temBeneficiario', label: 'Tem beneficiário no seguro?', type: 'toggle' },
+          { key: 'beneficiarioNome', label: 'Nome/Razão Social do beneficiário', type: 'text' },
+          { key: 'beneficiarioCpfCnpj', label: 'CPF/CNPJ do beneficiário', type: 'text' },
+          { key: 'valorImovel', label: 'Valor do imóvel (R$)', type: 'currency' },
+          { key: 'itemNovo', label: 'Item novo?', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'coberturas_pat',
+        title: 'Coberturas',
+        fields: [
+          { key: 'assistencia', label: 'Assistência', type: 'select', options: ['Básica', 'Completa', 'Sem assistência'] },
+          { key: 'cobIncendio', label: 'Incêndio', type: 'toggle' },
+          { key: 'cobDanosMorais', label: 'Danos Morais', type: 'toggle' },
+          { key: 'cobRcf', label: 'RCF', type: 'toggle' },
+          { key: 'cobDanosEletricos', label: 'Danos Elétricos', type: 'toggle' },
+          { key: 'cobEquipamentos', label: 'Equipamentos', type: 'toggle' },
+          { key: 'cobAluguel', label: 'Aluguel', type: 'toggle' },
+          { key: 'cobVidros', label: 'Vidros', type: 'toggle' },
+          { key: 'cobRouboFurto', label: 'Roubo e Furto', type: 'toggle' },
+          { key: 'cobVazamentos', label: 'Vazamentos', type: 'toggle' },
+          { key: 'cobVendaval', label: 'Vendaval', type: 'toggle' },
+          { key: 'cobDesmoronamento', label: 'Desmoronamento', type: 'toggle' },
+          { key: 'cobTumulto', label: 'Tumulto/Greve', type: 'toggle' },
+          { key: 'cobImpactoVeiculos', label: 'Impacto de Veículos', type: 'toggle' },
+          { key: 'cobRecomposicaoDocs', label: 'Recomposição de Documentos', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'vigencia_pat',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigencia', label: 'Início da vigência', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim da vigência', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+TEM BENEFICIÁRIO NO SEGURO? ( ) SIM ( ) NÃO
+SE SIM: {{beneficiarioNome}} / {{beneficiarioCpfCnpj}}
+ENDEREÇO DO RISCO: {{enderecoRisco}}
+VALOR DO IMÓVEL: R$ {{valorImovel}}
+COBERTURAS:
+  Assistência: ( ) Básica ( ) Completa
+  Cobertura Incêndio / Danos Morais / RCF / Danos Elétricos / Equipamento(s)
+  Aluguel / Vidros / Roubo e Furto / Vazamentos / Vendaval
+  Desmoronamento / Tumulto/Greve / Impacto de Veículos / Recomposição de Documentos
+ITEM NOVO: ( ) SIM ( ) NÃO
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO LÍQUIDO: R$ {{premioLiquido}} | PRÊMIO BRUTO: R$ {{premioBruto}}`,
+  },
+
+  'Vida PF': {
+    sections: [
+      {
+        id: 'segurado_vidapf',
+        title: 'Dados do Segurado',
+        fields: [
+          { key: 'nomeSegurado', label: 'Nome do segurado', type: 'text', required: true },
+          { key: 'cpfSegurado', label: 'CPF', type: 'text', required: true },
+          { key: 'dataNascSegurado', label: 'Data de nascimento', type: 'date', required: true },
+          { key: 'idadeSegurado', label: 'Idade', type: 'number' },
+          { key: 'estadoCivilSegurado', label: 'Estado civil', type: 'select', options: ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União estável'] },
+          { key: 'profissaoSegurado', label: 'Profissão', type: 'text' },
+          { key: 'rendaMensalSegurado', label: 'Renda mensal (R$)', type: 'currency' },
+          { key: 'fumante', label: 'Fumante?', type: 'toggle' },
+          { key: 'praticaEsporte', label: 'Pratica esporte?', type: 'toggle' },
+          { key: 'tipoEsporte', label: 'Qual esporte?', type: 'text' },
+          { key: 'aposentado', label: 'Aposentado?', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'coberturas_vidapf',
+        title: 'Coberturas',
+        fields: [
+          { key: 'cobMorte', label: 'Morte', type: 'toggle' },
+          { key: 'cobMorteAcidental', label: 'Morte Acidental', type: 'toggle' },
+          { key: 'capitalMorte', label: 'Capital morte (R$)', type: 'currency' },
+          { key: 'cobIpa', label: 'IPA — Invalidez Perm. por Acidente', type: 'toggle' },
+          { key: 'cobIfpd', label: 'IFPD — Invalidez Func. Perm. Total por Doença', type: 'toggle' },
+          { key: 'cobDit', label: 'DIT — Diária Incapacidade Temporária (R$/dia)', type: 'currency' },
+          { key: 'cobDih', label: 'DIH — Diária Internação Hospitalar (R$/dia)', type: 'currency' },
+          { key: 'cobDoencasGraves', label: 'Doenças Graves', type: 'toggle' },
+          { key: 'cobFuneral', label: 'Assistência Funeral', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'vigencia_vidapf',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigencia', label: 'Início da vigência', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim da vigência', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+DATA DE NASCIMENTO: {{dataNascSegurado}} | IDADE: {{idadeSegurado}} | ESTADO CIVIL: {{estadoCivilSegurado}} | PROFISSÃO: {{profissaoSegurado}} | RENDA MENSAL: R$ {{rendaMensalSegurado}}
+FUMANTE: ( ) SIM ( ) NÃO
+PRATICA ESPORTE: ( ) SIM ( ) NÃO — Qual? {{tipoEsporte}}
+APOSENTADO: ( ) SIM ( ) NÃO
+COBERTURAS:
+  MORTE / MORTE ACIDENTAL
+  INVALIDEZ PERM. TOTAL OU PARCIAL POR ACIDENTE (IPA)
+  INVALIDEZ FUNCIONAL PERM. TOTAL POR DOENÇA (IFPD)
+  DIT / DIH / DOENÇAS GRAVES / ASSISTÊNCIA FUNERAL
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %: {{comissaoTotal}} | COMISSÃO VITALÍCIA ATTENTI %: {{comissaoAttenti}}
+COMISSÃO AGENCIAMENTO TOTAL %: | COMISSÃO AGENCIAMENTO ATTENTI %:
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Vida PJ': {
+    sections: [
+      {
+        id: 'empresa_vidapj',
+        title: 'Dados da Empresa',
+        fields: [
+          { key: 'razaoSocial', label: 'Razão social', type: 'text', required: true, colSpan: 2 },
+          { key: 'cnpj', label: 'CNPJ', type: 'text', required: true },
+          { key: 'qtdVidasColaboradores', label: 'Nº de vidas colaboradores', type: 'number', required: true },
+          { key: 'qtdVidasSocios', label: 'Nº de vidas sócios', type: 'number' },
+          { key: 'tipoPlanoVidaPj', label: 'Tipo', type: 'select', options: ['Global', 'PME'], required: true },
+          { key: 'acordoClt', label: 'De acordo com CLT?', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'vidas_vidapj',
+        title: 'Relação de Vidas',
+        fields: [
+          { key: 'relaçãoVidas', label: 'Relação de vidas (nome, CPF, nascimento, idade, afastado)', type: 'textarea', colSpan: 2, placeholder: 'Nome Completo | CPF | Data Nasc. | Idade | Afastado (S/N) | CID se afastado' },
+        ],
+      },
+      {
+        id: 'coberturas_vidapj',
+        title: 'Coberturas',
+        fields: [
+          { key: 'cobMortePj', label: 'Morte', type: 'toggle' },
+          { key: 'cobMorteAcidentalPj', label: 'Morte Acidental', type: 'toggle' },
+          { key: 'capitalMortePj', label: 'Capital morte (R$)', type: 'currency' },
+          { key: 'cobIpaPj', label: 'IPA — Invalidez por Acidente', type: 'toggle' },
+          { key: 'cobIfpdPj', label: 'IFPD — Invalidez por Doença', type: 'toggle' },
+          { key: 'cobFuneralPj', label: 'Assistência Funeral', type: 'toggle' },
+        ],
+      },
+      {
+        id: 'vigencia_vidapj',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigencia', label: 'Início da vigência', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim da vigência', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+Nº DE VIDAS COLABORADORES: {{qtdVidasColaboradores}} | Nº DE VIDAS SÓCIOS: {{qtdVidasSocios}}
+[Relação de vidas — incluir planilha]
+TIPO: GLOBAL ( ) | PME ( )
+DE ACORDO COM CLT? ( ) SIM ( ) NÃO
+COBERTURAS: MORTE / MORTE ACIDENTAL / IPA / IFPD / ASSISTÊNCIA FUNERAL
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %: {{comissaoTotal}} / ATTENTI %: {{comissaoAttenti}}
+COMISSÃO AGENCIAMENTO TOTAL %:  / ATTENTI %:
+PRÊMIO MENSAL: R$ {{premioLiquido}} | PRÊMIO ANUAL: R$ {{premioAnual}}`,
+  },
+
+  'Seguro Garantia': {
+    sections: [
+      {
+        id: 'partes_garantia',
+        title: 'Partes do Contrato',
+        fields: [
+          { key: 'modalidade', label: 'Modalidade', type: 'select', required: true, options: ['Performance', 'Adiantamento de Pagamento', 'Pagamento', 'Compra e Venda de Energia'] },
+          { key: 'razaoSocialSegurado', label: 'Razão Social do Segurado', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjSegurado', label: 'CPF / CNPJ do Segurado', type: 'text', required: true },
+          { key: 'razaoSocialTomador', label: 'Razão Social do Tomador', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjTomador', label: 'CPF / CNPJ do Tomador', type: 'text', required: true },
+        ],
+      },
+      {
+        id: 'contrato_garantia',
+        title: 'Dados do Contrato / Obrigação',
+        fields: [
+          { key: 'contrato', label: 'Contrato', type: 'text' },
+          { key: 'processo', label: 'Processo', type: 'text' },
+          { key: 'edital', label: 'Edital', type: 'text' },
+          { key: 'objetoContrato', label: 'Objeto do Contrato/Pedido', type: 'textarea', colSpan: 2 },
+          { key: 'objetoAdiantamento', label: 'Objeto (nos casos de Adiantamento de Pagamento)', type: 'textarea', colSpan: 2 },
+          { key: 'valorEstimadoContrato', label: 'Valor Estimado do Contrato (R$)', type: 'currency' },
+          { key: 'valorContrato', label: 'Valor do Contrato (R$)', type: 'currency', required: true },
+          { key: 'valorDiferenca', label: 'Valor da Diferença (estimado + contrato) (R$)', type: 'currency' },
+          { key: 'isContrato', label: 'IS (5% do contrato) (R$)', type: 'currency' },
+          { key: 'isGarantiaAdicional', label: 'IS Garantia Adicional (R$)', type: 'currency' },
+          { key: 'isTotal', label: 'IS Total (R$)', type: 'currency', required: true },
+          { key: 'percentualGarantia', label: '% garantido do contrato', type: 'number' },
+          { key: 'clausulaGarantia', label: 'Cláusula sobre garantia no contrato', type: 'text' },
+          { key: 'numeroPaginaClausula', label: 'Número da página', type: 'text' },
+          { key: 'condicoesParticulares', label: 'Condições Particulares', type: 'textarea', colSpan: 2 },
+        ],
+      },
+      {
+        id: 'vigencia_garantia',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaContrato', label: 'Início vigência do contrato', type: 'date' },
+          { key: 'fimVigenciaContrato', label: 'Fim vigência do contrato', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ: {{razaoSocialSegurado}} / {{cpfCnpjSegurado}}
+CONTRATO: {{contrato}}
+PROCESSO: {{processo}}
+EDITAL: {{edital}}
+OBJETO NOS CASOS DE ADIANTAMENTO DE PAGAMENTO: {{objetoAdiantamento}}
+OBJETO DO CONTRATO/PEDIDO: {{objetoContrato}}
+VALOR ESTIMADO DO CONTRATO: R$ {{valorEstimadoContrato}}
+VALOR DO CONTRATO: R$ {{valorContrato}}
+VALOR DA DIFERENÇA ESTIMADO CONTRATO + CONTRATO: R$ {{valorDiferenca}}
+IS (5%) DO CONTRATO: R$ {{isContrato}}
+IS DA GARANTIA ADICIONAL: R$ {{isGarantiaAdicional}}
+IS TOTAL: R$ {{isTotal}}
+VIGÊNCIA DO CONTRATO/ORDEM OU PEDIDO DE COMPRA: {{inicioVigenciaContrato}} A {{fimVigenciaContrato}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+CLÁUSULA SOBRE GARANTIA NO CONTRATO: {{clausulaGarantia}}
+NÚMERO DA PÁGINA: {{numeroPaginaClausula}}
+CONDIÇÕES PARTICULARES: {{condicoesParticulares}}
+--- COTAÇÃO ---
+{{dataHoraCotacao}} - SUBSCRITOR OU EMISSOR: {{subscritor}} - COMERCIAL: {{comercial}} - MINUTA SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}}
+COM CO-CORRETAGEM ATTENTI %: {{comissaoAttenti}}
+GRUPO MEGA %: {{comissaoMega}}
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Seguro Licitante': {
+    sections: [
+      {
+        id: 'partes_licitante',
+        title: 'Partes',
+        fields: [
+          { key: 'razaoSocialSegurado', label: 'Razão Social do Segurado', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjSegurado', label: 'CPF / CNPJ do Segurado', type: 'text', required: true },
+          { key: 'razaoSocialTomador', label: 'Razão Social do Tomador', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjTomador', label: 'CPF / CNPJ do Tomador', type: 'text', required: true },
+        ],
+      },
+      {
+        id: 'licitacao',
+        title: 'Dados da Licitação',
+        fields: [
+          { key: 'processo', label: 'Processo', type: 'text' },
+          { key: 'edital', label: 'Edital', type: 'text', required: true },
+          { key: 'objeto', label: 'Objeto', type: 'textarea', colSpan: 2, required: true },
+          { key: 'valorEstimadoContrato', label: 'Valor Estimado do Contrato (R$)', type: 'currency', required: true },
+          { key: 'percentualIs', label: '% IS', type: 'number' },
+          { key: 'isTotal', label: 'IS (R$)', type: 'currency', required: true },
+          { key: 'clausulaGarantia', label: 'Cláusula sobre garantia no edital', type: 'text' },
+          { key: 'numeroPaginaClausula', label: 'Número da página', type: 'text' },
+          { key: 'condicoesParticulares', label: 'Condições Particulares', type: 'textarea', colSpan: 2 },
+        ],
+      },
+      {
+        id: 'vigencia_licitante',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaProposta', label: 'Início vigência da proposta', type: 'date' },
+          { key: 'fimVigenciaProposta', label: 'Fim vigência da proposta', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ: {{razaoSocialSegurado}} / {{cpfCnpjSegurado}}
+PROCESSO: {{processo}}
+EDITAL: {{edital}}
+OBJETO: {{objeto}}
+VALOR ESTIMADO CONTRATO: R$ {{valorEstimadoContrato}}
+IS ({{percentualIs}}%): R$ {{isTotal}}
+VIGÊNCIA DA PROPOSTA: {{inicioVigenciaProposta}} A {{fimVigenciaProposta}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+CLÁUSULA SOBRE GARANTIA NO EDITAL: {{clausulaGarantia}} | NÚMERO DA PÁGINA: {{numeroPaginaClausula}}
+CONDIÇÕES PARTICULARES: {{condicoesParticulares}}
+--- COTAÇÃO ---
+{{dataHoraCotacao}} - SUBSCRITOR OU EMISSOR: {{subscritor}} - COMERCIAL: {{comercial}} - MINUTA SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}}
+COM CO-CORRETAGEM ATTENTI %: {{comissaoAttenti}}
+GRUPO MEGA %: {{comissaoMega}}
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Seguro Judicial': {
+    sections: [
+      {
+        id: 'partes_judicial',
+        title: 'Partes',
+        fields: [
+          { key: 'tipoAcao', label: 'Tipo de Ação', type: 'select', required: true, options: ['Execução Fiscal', 'Execução Civil', 'Execução Tributária', 'Execução Criminal', 'Trabalhista', 'Depósito Recursal'] },
+          { key: 'razaoSocialSegurado', label: 'Razão Social do Segurado', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjSegurado', label: 'CPF / CNPJ do Segurado', type: 'text', required: true },
+        ],
+      },
+      {
+        id: 'processo_judicial',
+        title: 'Dados do Processo',
+        fields: [
+          { key: 'numeroProcesso', label: 'Número do Processo', type: 'text', required: true },
+          { key: 'cda', label: 'CDA', type: 'text' },
+          { key: 'tribunal', label: 'Tribunal', type: 'text' },
+          { key: 'vara', label: 'Vara', type: 'text' },
+          { key: 'isMais30', label: 'Valor da IS + 30% (R$)', type: 'currency', required: true },
+          // Trabalhista extras
+          { key: 'enderecoReclamante', label: 'Endereço do Reclamante', type: 'text', colSpan: 2 },
+          { key: 'identidadeReclamante', label: 'Identidade do Reclamante', type: 'text' },
+          { key: 'telefoneReclamante', label: 'Telefone do Reclamante', type: 'text' },
+          { key: 'emailReclamante', label: 'E-mail do Reclamante', type: 'text' },
+          // Depósito Recursal extra
+          { key: 'tipoRecurso', label: 'Tipo de Recurso', type: 'text' },
+        ],
+      },
+      {
+        id: 'vigencia_judicial',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigencia', label: 'Início da vigência', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim da vigência', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ: {{razaoSocialSegurado}} / {{cpfCnpjSegurado}}
+NÚMERO DO PROCESSO: {{numeroProcesso}}
+CDA: {{cda}}
+TIPO DE AÇÃO: {{tipoAcao}}
+TRIBUNAL: {{tribunal}}
+VARA: {{vara}}
+VALOR DA IS + 30%: R$ {{isMais30}}
+CNPJ/CPF SEGURADO: {{cpfCnpjSegurado}}
+ENDEREÇO DO RECLAMANTE: {{enderecoReclamante}}
+TIPO DE RECURSO: {{tipoRecurso}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+{{dataHoraCotacao}} - SUBSCRITOR OU EMISSOR: {{subscritor}} - COMERCIAL: {{comercial}} - MINUTA SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}}
+COM CO-CORRETAGEM ATTENTI %: {{comissaoAttenti}}
+GRUPO MEGA %: {{comissaoMega}}
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Fiança Locatícia': {
+    sections: [
+      {
+        id: 'partes_fianca',
+        title: 'Partes',
+        fields: [
+          { key: 'razaoSocialSegurado', label: 'Locador (Razão Social / Nome)', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjSegurado', label: 'CPF / CNPJ do Locador', type: 'text', required: true },
+          { key: 'nomeLocatario', label: 'Locatário (Nome / Razão Social)', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjLocatario', label: 'CPF / CNPJ do Locatário', type: 'text', required: true },
+          { key: 'imobiliaria', label: 'Imobiliária', type: 'text' },
+          { key: 'cnpjImobiliaria', label: 'CNPJ da Imobiliária', type: 'text' },
+        ],
+      },
+      {
+        id: 'imovel_fianca',
+        title: 'Imóvel e Coberturas',
+        fields: [
+          { key: 'enderecoRisco', label: 'Endereço do risco', type: 'text', required: true, colSpan: 2 },
+          { key: 'tipoImovelLocado', label: 'Tipo do imóvel', type: 'select', options: ['Residencial', 'Comercial'] },
+          { key: 'cobAluguel', label: 'Aluguel (R$)', type: 'currency' },
+          { key: 'cobIptu', label: 'IPTU (R$)', type: 'currency' },
+          { key: 'cobAgua', label: 'Água (R$)', type: 'currency' },
+          { key: 'cobLuz', label: 'Luz (R$)', type: 'currency' },
+          { key: 'cobCondominio', label: 'Condomínio (R$)', type: 'currency' },
+          { key: 'cobGas', label: 'Gás (R$)', type: 'currency' },
+          { key: 'cobDanosImovel', label: 'Danos ao Imóvel (R$)', type: 'currency' },
+          { key: 'cobMultaRescisao', label: 'Multa por Rescisão (R$)', type: 'currency' },
+          { key: 'cobPinturaInterna', label: 'Pintura Interna (R$)', type: 'currency' },
+          { key: 'cobPinturaExterna', label: 'Pintura Externa (R$)', type: 'currency' },
+          { key: 'clausulaGarantia', label: 'Nº cláusula sobre garantia', type: 'text' },
+          { key: 'numeroPaginaClausula', label: 'Número da página', type: 'text' },
+          { key: 'condicoesParticulares', label: 'Condições Particulares', type: 'textarea', colSpan: 2 },
+        ],
+      },
+      {
+        id: 'vigencia_fianca',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaContrato', label: 'Início vigência contrato de locação', type: 'date' },
+          { key: 'fimVigenciaContrato', label: 'Fim vigência contrato de locação', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ: {{razaoSocialSegurado}} / {{cpfCnpjSegurado}}
+IMOBILIÁRIA: {{imobiliaria}}
+CNPJ IMOBILIÁRIA: {{cnpjImobiliaria}}
+ENDEREÇO DO RISCO: {{enderecoRisco}}
+COBERTURAS:
+  ALUGUEL: R$ {{cobAluguel}}
+  IPTU: R$ {{cobIptu}}
+  ÁGUA: R$ {{cobAgua}}
+  LUZ: R$ {{cobLuz}}
+  CONDOMÍNIO: R$ {{cobCondominio}}
+  GÁS: R$ {{cobGas}}
+  DANOS AO IMÓVEL: R$ {{cobDanosImovel}}
+  MULTA POR RESCISÃO: R$ {{cobMultaRescisao}}
+  PINTURA INTERNA: R$ {{cobPinturaInterna}} | PINTURA EXTERNA: R$ {{cobPinturaExterna}}
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: {{inicioVigenciaContrato}} A {{fimVigenciaContrato}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+NÚMERO CLÁUSULA SOBRE GARANTIA: {{clausulaGarantia}} | NÚMERO DA PÁGINA: {{numeroPaginaClausula}}
+CONDIÇÕES PARTICULARES: {{condicoesParticulares}}
+--- COTAÇÃO ---
+{{dataHoraCotacao}} - SUBSCRITOR OU EMISSOR: {{subscritor}} - COMERCIAL: {{comercial}} - MINUTA SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}}
+COM CO-CORRETAGEM ATTENTI %: {{comissaoAttenti}}
+GRUPO MEGA %: {{comissaoMega}}
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Capitalização Aluguel': {
+    sections: [
+      {
+        id: 'partes_cap',
+        title: 'Partes',
+        fields: [
+          { key: 'razaoSocialSegurado', label: 'Nome / Razão Social do Cliente', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjSegurado', label: 'CPF / CNPJ', type: 'text', required: true },
+          { key: 'imobiliariaEstipulante', label: 'Imobiliária Estipulante', type: 'text' },
+        ],
+      },
+      {
+        id: 'dados_cap',
+        title: 'Dados do Título',
+        fields: [
+          { key: 'enderecoRisco', label: 'Endereço do risco', type: 'text', required: true, colSpan: 2 },
+          { key: 'valorAluguelMensal', label: 'Valor do aluguel mensal (R$)', type: 'currency', required: true },
+          { key: 'valorTitulo', label: 'Valor do título (R$)', type: 'currency', required: true },
+          { key: 'prazoCap', label: 'Prazo', type: 'select', required: true, options: ['12 meses (3% comissão total)', '15 meses (4% comissão total)', 'Acima de 15 meses (5% comissão total)'] },
+        ],
+      },
+      {
+        id: 'vigencia_cap',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaContrato', label: 'Início vigência contrato de locação', type: 'date' },
+          { key: 'fimVigenciaContrato', label: 'Fim vigência contrato de locação', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+RAZÃO SOCIAL / CPF OU CNPJ: {{razaoSocialSegurado}} / {{cpfCnpjSegurado}}
+ENDEREÇO DO RISCO: {{enderecoRisco}}
+VALOR ALUGUEL MENSAL: R$ {{valorAluguelMensal}}
+VALOR DO TÍTULO: R$ {{valorTitulo}}
+IMOBILIÁRIA ESTIPULANTE: {{imobiliariaEstipulante}}
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: {{inicioVigenciaContrato}} A {{fimVigenciaContrato}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- PROPOSTA ---
+{{dataHoraCotacao}} - EMISSOR: {{subscritor}} - PROPOSTA SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}}
+PRÊMIO: R$ {{premioLiquido}}`,
+  },
+
+  'Risco Engenharia': {
+    sections: [
+      {
+        id: 'partes_re',
+        title: 'Partes',
+        fields: [
+          { key: 'tipoRisco', label: 'Tipo de Risco', type: 'select', required: true, options: ['Risco de Engenharia (Obra)', 'RC Obras', 'Risco de Engenharia + RC Obras'] },
+          { key: 'beneficiario', label: 'Beneficiário', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjBeneficiario', label: 'CPF / CNPJ do Beneficiário', type: 'text', required: true },
+        ],
+      },
+      {
+        id: 'contrato_re',
+        title: 'Dados do Contrato / Obra',
+        fields: [
+          { key: 'contrato', label: 'Contrato', type: 'text' },
+          { key: 'processo', label: 'Processo', type: 'text' },
+          { key: 'edital', label: 'Edital', type: 'text' },
+          { key: 'objeto', label: 'Objeto', type: 'textarea', colSpan: 2, required: true },
+          { key: 'enderecoRisco', label: 'Endereço do Risco', type: 'text', colSpan: 2, required: true },
+          { key: 'valorContrato', label: 'Valor do Contrato (R$)', type: 'currency', required: true },
+          { key: 'lmi', label: 'LMI — Limite Máximo de Indenização (R$)', type: 'currency', required: true },
+          { key: 'clausulaGarantia', label: 'Nº cláusula sobre o seguro', type: 'text' },
+          { key: 'numeroPaginaClausula', label: 'Número da página', type: 'text' },
+          { key: 'condicoesParticulares', label: 'Condições Particulares', type: 'textarea', colSpan: 2 },
+        ],
+      },
+      {
+        id: 'vigencia_re',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaContrato', label: 'Início vigência do contrato', type: 'date' },
+          { key: 'fimVigenciaContrato', label: 'Fim vigência do contrato', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+BENEFICIÁRIO / CPF OU CNPJ: {{beneficiario}} / {{cpfCnpjBeneficiario}}
+CONTRATO: {{contrato}} | PROCESSO: {{processo}} | EDITAL: {{edital}}
+OBJETO: {{objeto}}
+ENDEREÇO DO RISCO: {{enderecoRisco}}
+VALOR CONTRATO: R$ {{valorContrato}}
+LMI: R$ {{lmi}}
+VIGÊNCIA DO CONTRATO: {{inicioVigenciaContrato}} A {{fimVigenciaContrato}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+NÚMERO CLÁUSULA SOBRE O SEGURO: {{clausulaGarantia}} | NÚMERO DA PÁGINA: {{numeroPaginaClausula}}
+CONDIÇÕES PARTICULARES: {{condicoesParticulares}}
+--- COTAÇÃO ---
+{{dataHoraCotacao}} - COTAÇÃO SEGURADORA: {{seguradora}}
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO LÍQUIDO: R$ {{premioLiquido}} | PRÊMIO BRUTO: R$ {{premioBruto}}`,
+  },
+
+  'Responsabilidade Civil': {
+    sections: [
+      {
+        id: 'tipo_rc',
+        title: 'Tipo de RC',
+        fields: [
+          { key: 'tipoRc', label: 'Tipo de RC', type: 'select', required: true, options: ['RC Obras — Vinculada por Contrato', 'RC Profissional', 'RC Geral'] },
+          { key: 'beneficiario', label: 'Beneficiário / Segurado', type: 'text', required: true, colSpan: 2 },
+          { key: 'cpfCnpjBeneficiario', label: 'CPF / CNPJ', type: 'text', required: true },
+        ],
+      },
+      {
+        id: 'risco_rc',
+        title: 'Dados do Risco',
+        fields: [
+          { key: 'contrato', label: 'Contrato', type: 'text' },
+          { key: 'processo', label: 'Processo', type: 'text' },
+          { key: 'edital', label: 'Edital', type: 'text' },
+          { key: 'objeto', label: 'Objeto', type: 'textarea', colSpan: 2, required: true },
+          { key: 'enderecoRisco', label: 'Endereço do Risco', type: 'text', colSpan: 2 },
+          { key: 'valorContrato', label: 'Valor do Contrato (R$)', type: 'currency' },
+          { key: 'lmi', label: 'LMI — Limite Máximo de Indenização (R$)', type: 'currency', required: true },
+          { key: 'clausulaGarantia', label: 'Nº cláusula', type: 'text' },
+          { key: 'numeroPaginaClausula', label: 'Número da página', type: 'text' },
+          { key: 'condicoesParticulares', label: 'Condições Particulares', type: 'textarea', colSpan: 2 },
+        ],
+      },
+      {
+        id: 'vigencia_rc',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigenciaContrato', label: 'Início vigência do contrato', type: 'date' },
+          { key: 'fimVigenciaContrato', label: 'Fim vigência do contrato', type: 'date' },
+          { key: 'inicioVigencia', label: 'Início vigência do seguro', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim vigência do seguro', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+BENEFICIÁRIO / CPF OU CNPJ: {{beneficiario}} / {{cpfCnpjBeneficiario}}
+CONTRATO: {{contrato}} | PROCESSO: {{processo}} | EDITAL: {{edital}}
+OBJETO: {{objeto}}
+ENDEREÇO DO RISCO: {{enderecoRisco}}
+VALOR CONTRATO: R$ {{valorContrato}}
+LMI: R$ {{lmi}}
+VIGÊNCIA DO CONTRATO: {{inicioVigenciaContrato}} A {{fimVigenciaContrato}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+NÚMERO CLÁUSULA: {{clausulaGarantia}} | NÚMERO DA PÁGINA: {{numeroPaginaClausula}}
+CONDIÇÕES PARTICULARES: {{condicoesParticulares}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} / COMISSÃO ATTENTI %: {{comissaoAttenti}} / PRÊMIO LÍQUIDO: R$ {{premioLiquido}} / PRÊMIO BRUTO: R$ {{premioBruto}}`,
+  },
+
+  'Eventos': {
+    sections: [
+      {
+        id: 'evento',
+        title: 'Dados do Evento',
+        fields: [
+          { key: 'nomeEvento', label: 'Nome do Evento', type: 'text', required: true, colSpan: 2 },
+          { key: 'organizador', label: 'Organizador', type: 'text', required: true },
+          { key: 'enderecoEvento', label: 'Endereço do Evento', type: 'text', required: true, colSpan: 2 },
+          { key: 'periodoInicio', label: 'Início do Evento', type: 'date', required: true },
+          { key: 'periodoFim', label: 'Fim do Evento', type: 'date', required: true },
+          { key: 'dataMontagem', label: 'Data de Montagem', type: 'date' },
+          { key: 'dataDesmontagem', label: 'Data de Desmontagem', type: 'date' },
+        ],
+      },
+      {
+        id: 'coberturas_eventos',
+        title: 'Coberturas',
+        fields: [
+          { key: 'cobRcEvento', label: 'RC do Evento (R$)', type: 'currency' },
+          { key: 'cobCancelamento', label: 'Cancelamento/Interrupção', type: 'toggle' },
+          { key: 'cobEquipamentosEvento', label: 'Equipamentos de Produção (R$)', type: 'currency' },
+          { key: 'cobEstrutura', label: 'Estrutura (Tendas, Palcos, Arquibancadas) (R$)', type: 'currency' },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+NOME DO EVENTO: {{nomeEvento}}
+ENDEREÇO DO EVENTO: {{enderecoEvento}}
+ORGANIZADOR: {{organizador}}
+COBERTURAS E VALORES: RC: R$ {{cobRcEvento}} | CANCELAMENTO: | EQUIPAMENTOS: R$ {{cobEquipamentosEvento}} | ESTRUTURA: R$ {{cobEstrutura}}
+PERÍODO DO EVENTO: {{periodoInicio}} A {{periodoFim}}
+DATA MONTAGEM: {{dataMontagem}} | DATA DESMONTAGEM: {{dataDesmontagem}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO LÍQUIDO: R$ {{premioLiquido}} | PRÊMIO BRUTO: R$ {{premioBruto}}`,
+  },
+
+  'Diversos': {
+    sections: [
+      {
+        id: 'bem_segurado',
+        title: 'Bem Segurado',
+        fields: [
+          { key: 'tipoBemSegurado', label: 'Tipo de bem segurado', type: 'select', required: true, options: ['Celular', 'Transporte de Carga', 'Animais Equinos', 'Outros'] },
+          { key: 'descricaoBem', label: 'Descrição do bem segurado', type: 'textarea', required: true, colSpan: 2 },
+          { key: 'valorBem', label: 'Valor do bem (R$)', type: 'currency', required: true },
+        ],
+      },
+      {
+        id: 'vigencia_div',
+        title: 'Vigência',
+        fields: [
+          { key: 'inicioVigencia', label: 'Início da vigência', type: 'date', required: true },
+          { key: 'fimVigencia', label: 'Fim da vigência', type: 'date', required: true },
+        ],
+      },
+    ],
+    observacaoTemplate: `ENTRADA: {{entrada}} | PROT VENDA: {{protVenda}} | PRODUTOR DO CLIENTE: {{produtorCliente}} | PRODUTOR DE REPASSE: {{produtorRepasse}}
+TIPO DE BEM SEGURADO: {{tipoBemSegurado}}
+DESCRIÇÃO DO BEM SEGURADO: {{descricaoBem}}
+VIGÊNCIA DO SEGURO: {{inicioVigencia}} A {{fimVigencia}}
+--- COTAÇÃO ---
+COMISSÃO TOTAL %: {{comissaoTotal}} | COMISSÃO ATTENTI %: {{comissaoAttenti}} | PRÊMIO: R$ {{premioLiquido}}`,
   },
 }
 

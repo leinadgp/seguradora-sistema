@@ -9,18 +9,22 @@ import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { genNumero, logEvento, todayISO } from '../lib/flow'
 
-const statusOpcoes = ['pendente', 'em_analise', 'aprovado', 'aplicado', 'rejeitado', 'cancelado']
+const statusOpcoes = ['rascunho', 'pendente', 'em_analise', 'aprovado', 'aplicado', 'rejeitado', 'cancelado']
 
 const tiposEndosso = [
   'Alteração de dados',
   'Inclusão de cobertura',
   'Exclusão de cobertura',
   'Alteração de valor',
+  'Substituição',
   'Cancelamento',
   'Substituição de item',
   'Correção cadastral',
   'Outro',
 ]
+
+const TIPOS_COM_TERMO = ['Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial', 'Risco Engenharia', 'Responsabilidade Civil']
+const TIPOS_CO_CORRETAGEM = ['Seguro Garantia', 'Seguro Licitante', 'Seguro Judicial', 'Risco Engenharia', 'Responsabilidade Civil']
 
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 
@@ -32,9 +36,11 @@ const emptyForm = {
   dataRequisicao: new Date().toISOString().split('T')[0],
   dataPrevisao: '', dataExecucao: '',
   motivo: '', descricao: '', motivacao: '',
+  termoAditivo: '',
   impactoFinanceiro: '',
   comissaoPercentual: '',
   comissaoValor: 0,
+  coCorretagemAtiva: false, percentualAttenti: '', percentualMega: '',
   responsavel: 'Carlos Silva',
   observacoes: '',
 }
@@ -558,6 +564,17 @@ export default function Endossos() {
                 className={inputCls}
               />
             </div>
+            {TIPOS_COM_TERMO.includes(form.tipoSeguro) && (
+              <div>
+                <label className={labelCls}>Termo Aditivo</label>
+                <input
+                  value={form.termoAditivo}
+                  onChange={e => setForm(f => ({ ...f, termoAditivo: e.target.value }))}
+                  placeholder="Ex: Termo Aditivo nº 01/2025"
+                  className={inputCls}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -589,6 +606,28 @@ export default function Endossos() {
                 )}
               </div>
             </div>
+            {TIPOS_CO_CORRETAGEM.includes(form.tipoSeguro) && (
+              <div className="space-y-3">
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={!!form.coCorretagemAtiva} onChange={e => setForm(f => ({ ...f, coCorretagemAtiva: e.target.checked, percentualAttenti: e.target.checked ? (f.percentualAttenti || '80') : '', percentualMega: e.target.checked ? (f.percentualMega || '20') : '' }))} className="w-4 h-4 accent-cyber-cyan" />
+                    <span className="text-sm font-medium text-cyber-text">Co-corretagem ATTENTI / MEGA</span>
+                  </label>
+                </div>
+                {form.coCorretagemAtiva && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>ATTENTI % (co-corretagem)</label>
+                      <input type="number" value={form.percentualAttenti} onChange={e => setForm(f => ({ ...f, percentualAttenti: e.target.value }))} placeholder="80" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>MEGA % (co-corretagem)</label>
+                      <input type="number" value={form.percentualMega} onChange={e => setForm(f => ({ ...f, percentualMega: e.target.value }))} placeholder="20" className={inputCls} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <label className={labelCls}>Observações</label>
               <textarea

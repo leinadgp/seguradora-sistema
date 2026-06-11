@@ -22,6 +22,7 @@ const emptyForm = {
   cpfResponsavel: '', cargoResponsavel: '', emailFinanceiro: '', telefoneFinanceiro: '',
   banco: '', agencia: '', conta: '', tipoConta: 'Corrente', chavePix: '',
   naturezaEmpresa: 'Privada', tomador: false, limitesTaxaGarantia: [],
+  grupoSegurado: '', classificacao: '',
 }
 
 function fmtMoeda(v) {
@@ -327,6 +328,49 @@ export default function Clientes() {
 
           {/* Seguro Garantia */}
           <Section title="Seguro Garantia">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <FormField label="Grupo de Segurado">
+                <select
+                  value={form.grupoSegurado}
+                  onChange={e => setForm(f => ({ ...f, grupoSegurado: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">Selecionar...</option>
+                  {form.tipo === 'PF' ? (
+                    <>
+                      <option value="SEGURADO PESSOA FISICA">SEGURADO PESSOA FISICA</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="SEGURADO SEGURO GARANTIA">SEGURADO SEGURO GARANTIA</option>
+                      <option value="TOMADOR SEGURO GARANTIA">TOMADOR SEGURO GARANTIA</option>
+                      <option value="SUB-ESTIPULANTE">SUB-ESTIPULANTE</option>
+                      <option value="SEGURADO PJ">SEGURADO PJ</option>
+                    </>
+                  )}
+                </select>
+              </FormField>
+              <FormField label="Classificação">
+                <select
+                  value={form.classificacao}
+                  onChange={e => setForm(f => ({ ...f, classificacao: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">Selecionar...</option>
+                  {form.tipo === 'PF' ? (
+                    <>
+                      <option value="SEGURADO PESSOA FISICA">SEGURADO PESSOA FISICA</option>
+                      <option value="BENEFICIARIO PESSOA FISICA">BENEFICIARIO PESSOA FISICA</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="SEGURADO PJ">SEGURADO PJ</option>
+                      <option value="BENEFICIARIO PJ">BENEFICIARIO PJ</option>
+                    </>
+                  )}
+                </select>
+              </FormField>
+            </div>
             <label className="flex items-center justify-between py-2.5 px-3 rounded-lg border border-cyber-border/60 hover:bg-slate-100 transition-colors cursor-pointer">
               <span className="text-sm text-cyber-text">É tomador (seguro garantia)?</span>
               <input type="checkbox" checked={!!form.tomador} onChange={e => setForm(f => ({ ...f, tomador: e.target.checked }))} className="w-4 h-4 accent-cyber-cyan cursor-pointer" />
@@ -450,6 +494,8 @@ export default function Clientes() {
                     <Field label="Funcionários" value={selected.numeroFuncionarios} />
                     <Field label="Responsável legal" value={selected.responsavelLegal} />
                   </>}
+                  <Field label="Grupo de Segurado" value={selected.grupoSegurado} />
+                  <Field label="Classificação" value={selected.classificacao} />
                   <Field label="Tomador (garantia)" value={selected.tomador ? 'Sim' : 'Não'} />
                   <Field label="Produtor" value={selected.produtor} />
                   <Field label="Responsável" value={selected.responsavel} />

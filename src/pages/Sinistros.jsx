@@ -7,17 +7,12 @@ import EmptyState from '../components/ui/EmptyState'
 import DynamicForm from '../components/ui/DynamicForm'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
+import { useCatalogo } from '../hooks/useCatalogo'
 import { sinistroTypeFields } from '../data/insuranceFields'
 
 const statusOpcoes = ['aberto', 'em_analise', 'aguardando_documentos', 'aguardando_seguradora', 'aprovado', 'negado', 'indenizado', 'encerrado']
 const responsaveis = ['Carlos Silva', 'Ana Santos', 'Pedro Lima', 'Roberto Alves', 'Fernanda Costa']
 const prioridades = ['Baixa', 'Normal', 'Alta', 'Urgente']
-
-const tiposSinistro = [
-  'Auto', 'Moto', 'Caminhão', 'Frota', 'Residencial', 'Condomínio',
-  'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Odontológico',
-  'Viagem', 'Equipamentos', 'Celular', 'Rural', 'Náutico', 'RC', 'Outros',
-]
 
 const emptyForm = {
   apoliceId: '', apolice: '', clienteId: '', cliente: '', seguradora: '',
@@ -114,6 +109,10 @@ export default function Sinistros() {
   const { showToast } = useApp()
   const { data: sinistros, create, update } = useResource('sinistros')
   const { data: apolices } = useResource('apolices')
+  const { getTipos, catalogo } = useCatalogo()
+  // Tipos ativos para formulário; todos os tipos (incl. legados) para o filtro
+  const tiposSinistroForm = [...getTipos(), 'Outros']
+  const tiposSinistroFiltro = [...new Set([...catalogo.map(c => c.tipo), 'Outros'])]
   const { data: clientes } = useResource('clientes')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
@@ -228,7 +227,7 @@ export default function Sinistros() {
         </select>
         <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
           <option value="todos">Todos os tipos</option>
-          {tiposSinistro.map(t => <option key={t} value={t}>{t}</option>)}
+          {tiposSinistroFiltro.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select value={filterPrioridade} onChange={e => setFilterPrioridade(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
           <option value="todos">Toda prioridade</option>
@@ -502,7 +501,7 @@ export default function Sinistros() {
                 <div>
                   <label className={labelCls}>Tipo de Seguro *</label>
                   <select value={form.tipoSinistro} onChange={e => setForm(f => ({ ...f, tipoSinistro: e.target.value }))} className={inputCls}>
-                    {tiposSinistro.map(t => <option key={t}>{t}</option>)}
+                    {tiposSinistroForm.map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>

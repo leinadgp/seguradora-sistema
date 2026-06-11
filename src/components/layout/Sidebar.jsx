@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Target, Shield, FileText, ClipboardList,
   Building2, DollarSign, AlertTriangle, Folder, CheckSquare,
-  RefreshCw, BarChart2, UserCog, Settings, X, ShieldCheck, FilePen, Headphones, Briefcase
+  RefreshCw, BarChart2, UserCog, Settings, X, ShieldCheck, FilePen, Headphones, Briefcase, MessageSquare
 } from 'lucide-react'
 
 const groups = [
@@ -42,6 +42,7 @@ const groups = [
       { to: '/sinistros',    icon: AlertTriangle, label: 'Sinistros' },
       { to: '/assistencias', icon: Headphones,   label: 'Assistências' },
       { to: '/documentos',   icon: Folder,       label: 'Documentos' },
+      { to: '/modelos',      icon: MessageSquare, label: 'Modelos' },
     ],
   },
   {

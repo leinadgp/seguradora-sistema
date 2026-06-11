@@ -20,7 +20,9 @@ const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', email: '',
   tipoSeguro: 'Auto', subcategorias: [], ramo: '',
   seguradora: 'Porto Seguro', produto: '',
-  valorEstimado: '', premio: '', percentualComissao: '15', comissao: '',
+  valorEstimado: '', premioLiquido: '', premioBruto: '',
+  percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
+  coCorretagem: false, comissao: '',
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
 }
 
@@ -48,7 +50,18 @@ export default function Cotacoes() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [convertConfirm, setConvertConfirm] = useState(null) // { cot } para confirmar gerar proposta
-  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
+  const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
+
+  function aplicarComissaoDoTipo(tipo, formAtual = {}) {
+    const entrada = getEntrada(tipo)
+    if (!entrada) return formAtual
+    return {
+      ...formAtual,
+      percentualComissaoAttenti: String(entrada.comissaoAttenti ?? ''),
+      coCorretagem: !!entrada.coCorretagem,
+      percentualComissaoMega: entrada.coCorretagem ? String(entrada.comissaoMega ?? 20) : '',
+    }
+  }
 
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
@@ -78,7 +91,8 @@ export default function Cotacoes() {
 
   async function handleSave() {
     if (!form.cliente) { showToast('Preencha o nome do cliente.', 'error'); return }
-    const comissao = recalcComissao(form.premio, form.percentualComissao)
+    const premio = form.premioLiquido || form.premioBruto || 0
+    const comissao = recalcComissao(premio, form.percentualComissaoAttenti)
     try {
       if (isEditing) {
         const updated = await update(selected.id, { ...selected, ...form, comissao })
@@ -339,7 +353,14 @@ export default function Cotacoes() {
           <Section title="Dados do Seguro">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FF label="Tipo de seguro">
-                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], ramo: getRamo(e.target.value) }))} className={inputCls}>
+                <select
+                  value={form.tipoSeguro}
+                  onChange={e => {
+                    const tipo = e.target.value
+                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], ramo: getRamo(tipo) }))
+                  }}
+                  className={inputCls}
+                >
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </FF>
@@ -367,9 +388,25 @@ export default function Cotacoes() {
           <Section title="Valores">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FF label="Valor estimado (R$)"><input type="number" value={form.valorEstimado} onChange={e => setForm(f => ({ ...f, valorEstimado: e.target.value }))} className={inputCls} /></FF>
-              <FF label="Valor do prêmio (R$)"><input type="number" value={form.premio} onChange={e => setForm(f => ({ ...f, premio: e.target.value, comissao: recalcComissao(e.target.value, f.percentualComissao) }))} className={inputCls} /></FF>
-              <FF label="Comissão (%)"><input type="number" value={form.percentualComissao} onChange={e => setForm(f => ({ ...f, percentualComissao: e.target.value, comissao: recalcComissao(f.premio, e.target.value) }))} className={inputCls} /></FF>
-              <FF label="Comissão prevista (R$)"><input value={fmtMoeda(form.comissao)} disabled className={inputCls + ' opacity-70'} /></FF>
+              <FF label="Prêmio líquido (R$)"><input type="number" value={form.premioLiquido} onChange={e => setForm(f => ({ ...f, premioLiquido: e.target.value }))} className={inputCls} /></FF>
+              <FF label="Prêmio bruto (R$)"><input type="number" value={form.premioBruto} onChange={e => setForm(f => ({ ...f, premioBruto: e.target.value }))} className={inputCls} /></FF>
+              <FF label="Comissão total (%)">
+                <input type="number" step="0.01" value={form.percentualComissaoTotal}
+                  onChange={e => setForm(f => ({ ...f, percentualComissaoTotal: e.target.value }))}
+                  className={inputCls} placeholder="Ex: 15" />
+              </FF>
+              <FF label={`Comissão ATTENTI (%) ${form.percentualComissaoAttenti ? `— ${form.percentualComissaoAttenti}%` : ''}`}>
+                <input type="number" step="0.01" value={form.percentualComissaoAttenti}
+                  onChange={e => setForm(f => ({ ...f, percentualComissaoAttenti: e.target.value }))}
+                  className={inputCls + ' bg-cyber-cyan/5'} placeholder="Auto-preenchido pelo tipo" />
+              </FF>
+              {form.coCorretagem && (
+                <FF label="Co-corretagem Grupo MEGA (%)">
+                  <input type="number" step="0.01" value={form.percentualComissaoMega}
+                    onChange={e => setForm(f => ({ ...f, percentualComissaoMega: e.target.value }))}
+                    className={inputCls + ' bg-violet-500/5'} />
+                </FF>
+              )}
             </div>
           </Section>
           <Section title="Gestão">
