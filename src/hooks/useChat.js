@@ -128,12 +128,13 @@ export default function useChat() {
   }, [conversaAtiva, loadMensagens])
 
   // Enviar mensagem de texto
-  const sendMessage = useCallback(async (conversaId, text) => {
+  const sendMessage = useCallback(async (conversaId, text, senderName = '') => {
     if (!conversaId || !text?.trim()) return
     setSending(true)
 
+    const now = Date.now()
     // Optimistic update: exibe a mensagem imediatamente antes de confirmar o envio
-    const tempId = `temp_${Date.now()}`
+    const tempId = `temp_${now}`
     const tempMsg = {
       id: tempId,
       messageid: '',
@@ -141,18 +142,25 @@ export default function useChat() {
       mediaType: 'text',
       text: text.trim(),
       fromMe: true,
-      messageTimestamp: Date.now(),
+      messageTimestamp: now,
       content: {},
-      senderName: '',
+      senderName: senderName || '',
       isGroup: false,
     }
     setMensagens(prev => [...prev, tempMsg])
+
+    // Optimistic update na lista de conversas
+    setConversas(prev => prev.map(c =>
+      c.id === conversaId
+        ? { ...c, lastMessage: text.trim(), lastMessageType: 'text', lastMessageTimestamp: now }
+        : c
+    ).sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp))
 
     try {
       const res = await fetch('/api/uazapi/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversaId, text: text.trim() }),
+        body: JSON.stringify({ conversaId, text: text.trim(), senderName }),
       })
       const data = await res.json()
       if (!res.ok) {

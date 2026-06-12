@@ -45,9 +45,13 @@ export default function MessageBubble({ mensagem, isGroup, onDownload }) {
             : 'bg-white text-cyber-text border border-slate-100 rounded-bl-sm'
         }`}
       >
-        {/* Nome do remetente (grupos) */}
-        {isGroup && !fromMe && mensagem.senderName && (
-          <p className="text-[10px] font-semibold text-cyber-cyan mb-1">{mensagem.senderName}</p>
+        {/* Nome do remetente — sempre exibido quando disponível */}
+        {mensagem.senderName && (
+          <p className={`text-[10px] font-semibold mb-1 ${
+            fromMe ? 'text-right text-white/75' : 'text-left text-cyber-cyan'
+          }`}>
+            {mensagem.senderName}
+          </p>
         )}
 
         {/* Conteúdo */}

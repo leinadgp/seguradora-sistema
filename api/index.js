@@ -123,11 +123,12 @@ app.post('/api/webhook/uazapi', async (req, res) => {
       if (leadMatch) leadId = leadMatch.id
     } catch (_) { }
 
-    const lastMsgText = message.text ||
-      (message.mediaType === 'audio' ? '🎵 Áudio' :
-       message.mediaType === 'image' ? '📷 Imagem' :
-       message.mediaType === 'video' ? '🎥 Vídeo' :
-       message.mediaType === 'media' ? '📄 Documento' : '💬 Mensagem')
+    const lastMsgText = message.text
+      || (message.content && message.content.caption)   // imagem/vídeo com legenda
+      || (message.mediaType === 'audio' ? '🎵 Áudio' :
+          message.mediaType === 'image' ? '📷 Imagem' :
+          message.mediaType === 'video' ? '🎥 Vídeo' :
+          message.mediaType === 'media' ? '📄 Documento' : '💬 Mensagem')
 
     const conversaData = {
       id: chatid,
@@ -156,6 +157,15 @@ app.post('/api/webhook/uazapi', async (req, res) => {
     }
     await supabase.from('conversas').upsert({ id: chatid, data: conversaData })
 
+    // Para mensagens fromMe: preservar senderName já salvo (ex: enviado pelo operador via CRM)
+    let savedSenderName = message.senderName || ''
+    if (message.fromMe) {
+      try {
+        const { data: existingRows } = await supabase.from('mensagens').select('data').eq('id', message.id)
+        if (existingRows?.[0]?.data?.senderName) savedSenderName = existingRows[0].data.senderName
+      } catch (_) {}
+    }
+
     const mensagemData = {
       id: message.id,
       messageid: message.messageid || '',   // ID curto sem prefixo owner (usado no download)
@@ -166,7 +176,7 @@ app.post('/api/webhook/uazapi', async (req, res) => {
       text: message.text || '',
       content: message.content || {},
       fromMe: Boolean(message.fromMe),
-      senderName: message.senderName || '',
+      senderName: savedSenderName,
       sender_pn: message.sender_pn || '',
       sender_lid: message.sender_lid || '',
       isGroup: Boolean(message.isGroup),
@@ -194,7 +204,7 @@ async function getUazapiConfig() {
 // Enviar mensagem
 app.post('/api/uazapi/send', async (req, res) => {
   try {
-    const { conversaId, text, mediaType, mediaUrl, fileName, caption, delay } = req.body || {}
+    const { conversaId, text, senderName, mediaType, mediaUrl, fileName, caption, delay } = req.body || {}
     if (!conversaId || (!text && !mediaUrl)) return res.status(400).json({ error: 'conversaId e text ou mediaUrl são obrigatórios.' })
 
     const cfg = await getUazapiConfig()
@@ -217,6 +227,48 @@ app.post('/api/uazapi/send', async (req, res) => {
     })
     const uazData = await uazRes.json().catch(() => ({}))
     if (!uazRes.ok) return res.status(uazRes.status).json({ error: uazData?.error || 'Erro ao enviar mensagem.' })
+
+    // Salva a mensagem enviada imediatamente no DB com o senderName do operador
+    try {
+      const msgId = uazData?.id || uazData?.messageid || `sent_${Date.now()}`
+      const msgTs = Date.now()
+      const mensagemData = {
+        id: msgId,
+        messageid: uazData?.messageid || '',
+        conversaId,
+        instanceName: cfg.instanceName || '',
+        messageType: mediaUrl ? 'MediaMessage' : 'TextMessage',
+        mediaType: mediaUrl ? (mediaType || 'image') : 'text',
+        text: text || caption || '',
+        content: {},
+        fromMe: true,
+        senderName: senderName || '',
+        sender_pn: '',
+        sender_lid: '',
+        isGroup: conversaId.includes('@g.us'),
+        groupName: '',
+        messageTimestamp: msgTs,
+        mediaDownloaded: false,
+        mediaUrl: mediaUrl || null,
+        createdAt: new Date().toISOString(),
+      }
+      await supabase.from('mensagens').upsert({ id: msgId, data: mensagemData })
+
+      // Atualiza lastMessage na conversa imediatamente (sem esperar webhook de eco)
+      const { data: convRows } = await supabase.from('conversas').select('data').eq('id', conversaId)
+      if (convRows?.[0]) {
+        const convUpdated = {
+          ...convRows[0].data,
+          lastMessage: text || caption || (mediaUrl ? '📎 Mídia' : '💬 Mensagem'),
+          lastMessageType: mediaUrl ? (mediaType || 'image') : 'text',
+          lastMessageTimestamp: msgTs,
+        }
+        await supabase.from('conversas').upsert({ id: conversaId, data: convUpdated })
+      }
+    } catch (dbErr) {
+      console.error('[send] erro ao salvar no DB:', dbErr.message)
+    }
+
     res.json(uazData)
   } catch (err) {
     res.status(500).json({ error: err.message })

@@ -1,12 +1,15 @@
 import { useCallback } from 'react'
 import useChat from '../hooks/useChat'
 import useResource from '../hooks/useResource'
+import { useAuth } from '../context/AuthContext'
 import ConversasList from '../components/chat/ConversasList'
 import ChatView from '../components/chat/ChatView'
 import ContactPanel from '../components/chat/ContactPanel'
 import { MessageSquare, AlertCircle } from 'lucide-react'
 
 export default function Conversas() {
+  const { user } = useAuth()
+
   const {
     conversas,
     mensagens,
@@ -27,13 +30,16 @@ export default function Conversas() {
   const uazapiConfig = configuracoes.find(c => c.id === 'uazapi')
   const semConfig = !uazapiConfig?.baseUrl || !uazapiConfig?.token
 
+  // Nome do operador logado, exibido nas mensagens que ele envia
+  const nomeOperador = user?.nome || user?.email?.split('@')[0] || ''
+
   const handleSend = useCallback(async (conversaId, text) => {
     if (semConfig) {
       alert('Configure a integração UAZAPI em Configurações antes de enviar mensagens.')
       return
     }
-    await sendMessage(conversaId, text)
-  }, [sendMessage, semConfig])
+    await sendMessage(conversaId, text, nomeOperador)
+  }, [sendMessage, semConfig, nomeOperador])
 
   const handleTyping = useCallback((conversaId) => {
     setTyping(conversaId)
