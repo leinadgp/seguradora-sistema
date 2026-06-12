@@ -158,6 +158,7 @@ app.post('/api/webhook/uazapi', async (req, res) => {
 
     const mensagemData = {
       id: message.id,
+      messageid: message.messageid || '',   // ID curto sem prefixo owner (usado no download)
       conversaId: chatid,
       instanceName: instanceName || '',
       messageType: message.messageType || '',
@@ -231,11 +232,14 @@ app.post('/api/uazapi/download', async (req, res) => {
     const cfg = await getUazapiConfig()
     if (!cfg?.baseUrl || !cfg?.token) return res.status(400).json({ error: 'Configuração UAZAPI não encontrada.' })
 
+    // UAZAPI espera o ID curto (sem prefixo owner). Ex: "3EB0044C..." não "555183437876:3EB0..."
+    const shortId = messageid.includes(':') ? messageid.split(':').pop() : messageid
+
     const uazRes = await fetch(`${cfg.baseUrl}/message/download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'token': cfg.token },
       body: JSON.stringify({
-        id: messageid,          // campo correto conforme n8n workflow
+        id: shortId,
         return_base64: true,
         return_link: false,
       }),

@@ -96,7 +96,7 @@ export default function ConversasList({ conversas, conversaAtiva, onSelect, load
               className={`w-full flex items-start gap-3 px-4 py-3 border-b border-cyber-cyan/5 hover:bg-slate-50 transition-colors text-left ${ativa ? 'bg-cyber-cyan/5 border-l-2 border-l-cyber-cyan' : ''}`}
             >
               <div className="relative shrink-0 mt-0.5">
-                <Avatar name={c.name} image={c.image} isGroup={c.isGroup} size={40} />
+                <Avatar name={c.name} image={c.image || c.imagePreview} isGroup={c.isGroup} size={40} />
                 {c.unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-cyber-cyan text-white text-[10px] font-bold flex items-center justify-center">
                     {c.unreadCount > 99 ? '99+' : c.unreadCount}

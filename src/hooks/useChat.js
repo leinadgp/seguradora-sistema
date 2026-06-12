@@ -77,7 +77,12 @@ export default function useChat() {
           if (prev && novaMensagem.conversaId === prev.id) {
             setMensagens(msgs => {
               const existe = msgs.some(m => m.id === novaMensagem.id)
-              return existe ? msgs : [...msgs, novaMensagem]
+              if (existe) return msgs
+              // Remove mensagens optimistic (temp_*) quando a mensagem real de "mim" chega
+              const base = novaMensagem.fromMe
+                ? msgs.filter(m => !String(m.id).startsWith('temp_'))
+                : msgs
+              return [...base, novaMensagem]
             })
           }
           return prev
@@ -126,6 +131,23 @@ export default function useChat() {
   const sendMessage = useCallback(async (conversaId, text) => {
     if (!conversaId || !text?.trim()) return
     setSending(true)
+
+    // Optimistic update: exibe a mensagem imediatamente antes de confirmar o envio
+    const tempId = `temp_${Date.now()}`
+    const tempMsg = {
+      id: tempId,
+      messageid: '',
+      conversaId,
+      mediaType: 'text',
+      text: text.trim(),
+      fromMe: true,
+      messageTimestamp: Date.now(),
+      content: {},
+      senderName: '',
+      isGroup: false,
+    }
+    setMensagens(prev => [...prev, tempMsg])
+
     try {
       const res = await fetch('/api/uazapi/send', {
         method: 'POST',
@@ -133,9 +155,14 @@ export default function useChat() {
         body: JSON.stringify({ conversaId, text: text.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao enviar')
+      if (!res.ok) {
+        // Remove mensagem optimistic se falhou
+        setMensagens(prev => prev.filter(m => m.id !== tempId))
+        throw new Error(data.error || 'Erro ao enviar')
+      }
       return data
     } catch (err) {
+      setMensagens(prev => prev.filter(m => m.id !== tempId))
       console.error('[useChat] sendMessage:', err.message)
       throw err
     } finally {
@@ -167,10 +194,12 @@ export default function useChat() {
   // Download de mídia — UAZAPI retorna { base64Data, mimetype } ou { url }
   const downloadMedia = useCallback(async (mensagem) => {
     try {
+      // Usa messageid curto se disponível (ex: "3EB0..."), senão usa id completo e o backend extrai
+      const msgId = mensagem.messageid || mensagem.id
       const res = await fetch('/api/uazapi/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageid: mensagem.id, conversaId: mensagem.conversaId }),
+        body: JSON.stringify({ messageid: msgId, conversaId: mensagem.conversaId }),
       })
       if (!res.ok) return null
       const data = await res.json()

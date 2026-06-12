@@ -21,13 +21,17 @@ export default function ChatInput({ onSend, onTyping, disabled }) {
     }
   }, [onTyping])
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const trimmed = text.trim()
     if (!trimmed || disabled) return
-    onSend(trimmed)
     setText('')
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    try {
+      await onSend(trimmed)
+    } catch (err) {
+      // Restaura o texto se o envio falhar
+      setText(trimmed)
+      alert('Erro ao enviar mensagem: ' + (err.message || 'Tente novamente.'))
     }
   }, [text, disabled, onSend])
 
