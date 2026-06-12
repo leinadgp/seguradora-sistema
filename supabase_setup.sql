@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS "seguros_catalogo" (id TEXT PRIMARY KEY, data JSONB N
 CREATE TABLE IF NOT EXISTS "sinistros" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
 CREATE TABLE IF NOT EXISTS "tarefas" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
 CREATE TABLE IF NOT EXISTS "usuarios" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
+CREATE TABLE IF NOT EXISTS "configuracoes" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
+CREATE TABLE IF NOT EXISTS "conversas" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
+CREATE TABLE IF NOT EXISTS "mensagens" (id TEXT PRIMARY KEY, data JSONB NOT NULL);
+
+-- Habilitar Realtime para mensagens (execute no painel Supabase Database > Replication se preferir via UI)
+ALTER TABLE "mensagens" REPLICA IDENTITY FULL;
 
 -- DADOS MIGRADOS DO SQLITE
 

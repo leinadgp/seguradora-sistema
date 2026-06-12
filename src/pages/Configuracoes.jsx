@@ -3,6 +3,7 @@ import { input as inputCls } from '../lib/styles'
 import {
   Save, Building2, Bell, Users, CreditCard, Tag,
   Plus, Search, Edit2, KeyRound, Eye, EyeOff, ShieldCheck, UserX, UserCheck,
+  MessageSquare, CheckCircle, AlertCircle,
 } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -62,11 +63,15 @@ export default function Configuracoes() {
     { key: 'origens',       label: 'Origens de Lead',     icon: <Tag size={16} /> },
     ...(canManageUsers ? [{ key: 'acesso', label: 'Perfis de Acesso', icon: <Users size={16} /> }] : []),
     { key: 'notificacoes',  label: 'Notificações',        icon: <Bell size={16} /> },
+    { key: 'whatsapp',      label: 'WhatsApp / UAZAPI',   icon: <MessageSquare size={16} /> },
   ]
 
   const [aba, setAba] = useState('corretora')
   const [corretora, setCorretora] = useState(DEFAULT_CORRETORA)
   const [notif, setNotif] = useState(DEFAULT_NOTIF)
+  const [uazapi, setUazapi] = useState({ instanceName: '', baseUrl: '', token: '', owner: '' })
+  const [uazapiTestando, setUazapiTestando] = useState(false)
+  const [uazapiTestResult, setUazapiTestResult] = useState(null) // null | 'ok' | 'error'
 
   // ─── Estado gestão de usuários ───────────────────────────────────────────
   const [userSearch, setUserSearch] = useState('')
@@ -82,9 +87,11 @@ export default function Configuracoes() {
 
   useEffect(() => {
     if (configs.length > 0) {
-      const cfg = configs[0]
+      const cfg = configs.find(c => c.id === 'config') || configs[0]
       if (cfg.corretora) setCorretora(c => ({ ...DEFAULT_CORRETORA, ...cfg.corretora }))
       if (cfg.notif) setNotif(n => ({ ...DEFAULT_NOTIF, ...cfg.notif }))
+      const uazapiCfg = configs.find(c => c.id === 'uazapi')
+      if (uazapiCfg) setUazapi(u => ({ ...u, ...uazapiCfg }))
     }
   }, [configs.length])
 
@@ -176,16 +183,53 @@ export default function Configuracoes() {
 
   // ─── Salvar configurações ────────────────────────────────────────────────
   async function salvar() {
+    if (aba === 'whatsapp') {
+      try {
+        const existing = configs.find(c => c.id === 'uazapi')
+        const payload = { id: 'uazapi', ...uazapi }
+        if (existing) {
+          await updateConfig('uazapi', payload)
+        } else {
+          await createConfig(payload)
+        }
+        showToast('Configuração UAZAPI salva com sucesso!')
+      } catch {
+        showToast('Erro ao salvar configuração UAZAPI.', 'error')
+      }
+      return
+    }
     const payload = { id: 'config', corretora, notif }
     try {
-      if (configs.length > 0) {
-        await updateConfig(configs[0].id, payload)
+      const existing = configs.find(c => c.id === 'config')
+      if (existing) {
+        await updateConfig('config', payload)
       } else {
         await createConfig(payload)
       }
       showToast('Configurações salvas com sucesso!')
     } catch {
       showToast('Erro ao salvar configurações.', 'error')
+    }
+  }
+
+  async function testarUazapi() {
+    if (!uazapi.baseUrl || !uazapi.token) {
+      showToast('Informe o BaseUrl e Token antes de testar.', 'error')
+      return
+    }
+    setUazapiTestando(true)
+    setUazapiTestResult(null)
+    try {
+      // Testa chamando o endpoint de contatos da UAZAPI
+      const res = await fetch(`${uazapi.baseUrl}/contacts`, {
+        method: 'GET',
+        headers: { 'token': uazapi.token },
+      })
+      setUazapiTestResult(res.ok ? 'ok' : 'error')
+    } catch {
+      setUazapiTestResult('error')
+    } finally {
+      setUazapiTestando(false)
     }
   }
 
@@ -383,6 +427,104 @@ export default function Configuracoes() {
                   </label>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── WhatsApp / UAZAPI ─────────────────────────────────────────── */}
+        {aba === 'whatsapp' && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="font-semibold text-cyber-text">Integração WhatsApp — UAZAPI</h3>
+              <p className="text-xs text-cyber-muted mt-0.5">
+                Configure a instância UAZAPI para receber e enviar mensagens pelo WhatsApp.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="hud-label mb-1">Instance Name</label>
+                <input
+                  value={uazapi.instanceName}
+                  onChange={e => setUazapi(u => ({ ...u, instanceName: e.target.value }))}
+                  placeholder="Ex: Felipe"
+                  className={inputCls}
+                />
+                <p className="text-[10px] text-cyber-muted mt-0.5">Nome da instância no painel UAZAPI</p>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Owner (número do dono)</label>
+                <input
+                  value={uazapi.owner}
+                  onChange={e => setUazapi(u => ({ ...u, owner: e.target.value }))}
+                  placeholder="Ex: 555183437876"
+                  className={inputCls}
+                />
+                <p className="text-[10px] text-cyber-muted mt-0.5">Número do WhatsApp conectado (só números)</p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="hud-label mb-1">Base URL da API</label>
+                <input
+                  value={uazapi.baseUrl}
+                  onChange={e => setUazapi(u => ({ ...u, baseUrl: e.target.value }))}
+                  placeholder="Ex: https://sua-instancia.uazapi.com"
+                  className={inputCls}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="hud-label mb-1">Token de autenticação</label>
+                <input
+                  value={uazapi.token}
+                  onChange={e => setUazapi(u => ({ ...u, token: e.target.value }))}
+                  placeholder="Ex: b9847777-39bb-47a8-81f8-b75f6c71ac0e"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            {/* URL do webhook */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <p className="text-xs font-medium text-cyber-text mb-1">URL do Webhook (configure na UAZAPI)</p>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-cyber-cyan bg-cyber-cyan/5 px-2 py-1 rounded flex-1 overflow-x-auto">
+                  {window.location.origin}/api/webhook/uazapi
+                </code>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/webhook/uazapi`); showToast('URL copiada!') }}
+                  className="text-xs text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded hover:bg-cyber-cyan/10 transition-colors cursor-pointer"
+                >
+                  Copiar
+                </button>
+              </div>
+              <p className="text-[10px] text-cyber-muted mt-1.5">
+                Em desenvolvimento local: use <strong>ngrok</strong> para expor a porta 3001 e configure a URL pública do ngrok + /api/webhook/uazapi
+              </p>
+            </div>
+
+            {/* Testar conexão */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={testarUazapi}
+                disabled={uazapiTestando}
+                className="flex items-center gap-2 text-sm px-4 py-2 border border-cyber-cyan/30 text-cyber-cyan rounded-xl hover:bg-cyber-cyan/10 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {uazapiTestando ? (
+                  <span className="w-4 h-4 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <MessageSquare size={14} />
+                )}
+                {uazapiTestando ? 'Testando...' : 'Testar conexão'}
+              </button>
+              {uazapiTestResult === 'ok' && (
+                <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                  <CheckCircle size={13} /> Conectado com sucesso!
+                </span>
+              )}
+              {uazapiTestResult === 'error' && (
+                <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                  <AlertCircle size={13} /> Falha na conexão. Verifique URL e Token.
+                </span>
+              )}
             </div>
           </div>
         )}
