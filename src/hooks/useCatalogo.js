@@ -92,6 +92,20 @@ export function useCatalogo() {
   }
 
   /**
+   * Agrega coberturas de múltiplas subcategorias selecionadas, deduplicadas.
+   * @param {string} tipo - tipo de seguro (ex: "Automóvel")
+   * @param {string[]} subcategoriasArray - nomes das subcategorias selecionadas
+   */
+  function getCoberturasDaSelecao(tipo, subcategoriasArray) {
+    const entry = catalogo.find(c => c.tipo === tipo)
+    if (!entry || !subcategoriasArray?.length) return []
+    return entry.subcategorias
+      .filter(s => subcategoriasArray.includes(s.nome) && s.ativo !== false)
+      .flatMap(s => s.coberturas || [])
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+  }
+
+  /**
    * Persiste alteração em um registro do catálogo (toggle ativo, add/remove subcategoria, etc.).
    * Usa o `update` do useResource que faz PUT /api/seguros_catalogo/:id
    */
@@ -108,6 +122,7 @@ export function useCatalogo() {
     getTipos,
     getSubcategorias,
     getCoberturas,
+    getCoberturasDaSelecao,
     getRamo,
     getModulo,
     getEntrada,

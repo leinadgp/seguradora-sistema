@@ -19,7 +19,7 @@ import { useCatalogo } from '../hooks/useCatalogo'
 
 const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', email: '',
-  tipoSeguro: 'Auto', subcategorias: [], ramo: '',
+  tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
   seguradora: 'Porto Seguro', produto: '',
   valorEstimado: '', premioLiquido: '', premioBruto: '',
   percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
@@ -54,7 +54,8 @@ export default function Cotacoes() {
   const [isEditing, setIsEditing] = useState(false)
   const [convertConfirm, setConvertConfirm] = useState(null) // { cot } para confirmar gerar proposta
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
+  const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo, getEntrada } = useCatalogo()
+  const [expandCobs, setExpandCobs] = useState(false)
 
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
     const entrada = getEntrada(tipo)
@@ -166,7 +167,8 @@ export default function Cotacoes() {
         id, numero,
         quote_id: cot.id, cotacaoNumero: cot.numero,
         cliente: cot.cliente, cpfCnpj: cot.cpfCnpj, telefone: cot.telefone, email: cot.email,
-        tipoSeguro: cot.tipoSeguro, seguradora: cot.seguradora, produto: cot.produto,
+        tipoSeguro: cot.tipoSeguro, ramo: cot.ramo || '', subcategorias: cot.subcategorias || [], coberturas: cot.coberturas || [],
+        seguradora: cot.seguradora, produto: cot.produto,
         seguradorasCotadas: cot.seguradora ? [cot.seguradora] : [],
         premio: cot.premioLiquido || cot.premioBruto || cot.premio, melhorValor: cot.premioLiquido || cot.premioBruto || cot.premio, valorApresentado: cot.premioLiquido || cot.premioBruto || cot.premio,
         comissao: cot.comissao, percentualComissao: cot.percentualComissao,
@@ -381,20 +383,26 @@ export default function Cotacoes() {
                   value={form.tipoSeguro}
                   onChange={e => {
                     const tipo = e.target.value
-                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], ramo: getRamo(tipo) }))
+                    setExpandCobs(false)
+                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], coberturas: [], ramo: getRamo(tipo) }))
                   }}
                   className={inputCls}
                 >
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </FF>
-              <FF label="Coberturas / Subcategoria">
+              <FF label="Subtipo / Ramo">
                 <div className="flex flex-wrap gap-1.5 mt-1 min-h-[32px]">
                   {getSubcategorias(form.tipoSeguro).map(s => {
                     const sel = (form.subcategorias || []).includes(s.nome)
                     return (
                       <button key={s.id} type="button"
-                        onClick={() => setForm(f => { const arr = f.subcategorias || []; return { ...f, subcategorias: arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome] } })}
+                        onClick={() => setForm(f => {
+                          const arr = f.subcategorias || []
+                          const newSubs = arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome]
+                          const validCobs = getCoberturasDaSelecao(f.tipoSeguro, newSubs)
+                          return { ...f, subcategorias: newSubs, coberturas: (f.coberturas || []).filter(c => validCobs.includes(c)) }
+                        })}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${sel ? 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-cyber-cyan/30'}`}>
                         {s.nome}
                       </button>
@@ -405,6 +413,33 @@ export default function Cotacoes() {
                   )}
                 </div>
               </FF>
+              {(form.subcategorias || []).length > 0 && (() => {
+                const todas = getCoberturasDaSelecao(form.tipoSeguro, form.subcategorias || [])
+                if (!todas.length) return null
+                const visiveis = expandCobs ? todas : todas.slice(0, 8)
+                return (
+                  <FF label={<>Coberturas{(form.coberturas || []).length > 0 && <span className="ml-2 text-cyber-purple font-normal normal-case">{(form.coberturas || []).length} selecionada(s)</span>}</>}>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {visiveis.map(c => {
+                        const sel = (form.coberturas || []).includes(c)
+                        return (
+                          <button key={c} type="button"
+                            onClick={() => setForm(f => { const arr = f.coberturas || []; return { ...f, coberturas: arr.includes(c) ? arr.filter(x => x !== c) : [...arr, c] } })}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-medium border transition-colors ${sel ? 'bg-cyber-purple/20 text-cyber-purple border-cyber-purple/40' : 'bg-cyber-surface/40 text-cyber-muted border-cyber-border/30 hover:border-cyber-purple/30'}`}>
+                            {c}
+                          </button>
+                        )
+                      })}
+                      {todas.length > 8 && (
+                        <button type="button" onClick={() => setExpandCobs(v => !v)}
+                          className="px-2 py-0.5 rounded-md text-[10px] text-cyber-cyan border border-cyber-cyan/30 hover:bg-cyber-cyan/10 transition-colors">
+                          {expandCobs ? 'Ver menos ▲' : `+${todas.length - 8} Ver mais ▼`}
+                        </button>
+                      )}
+                    </div>
+                  </FF>
+                )
+              })()}
               <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}><option value="">Selecione...</option>{seguradoras.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}</select></FF>
               <FF label="Produto"><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>
             </div>

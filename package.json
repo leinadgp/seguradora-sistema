@@ -8,7 +8,12 @@
     "server": "node --env-file=.env server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "import:sgcor": "node --env-file=.env scripts/import-sgcor.js",
+    "import:sgcor:dry": "node --env-file=.env scripts/import-sgcor.js --dry-run",
+    "import:catalogo": "node --env-file=.env scripts/import-catalogo.js",
+    "import:catalogo:dry": "node --env-file=.env scripts/import-catalogo.js --dry-run",
+    "db:limpar": "node --env-file=.env scripts/limpar-dados-ficticios.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

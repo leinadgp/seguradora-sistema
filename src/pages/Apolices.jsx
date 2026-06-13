@@ -24,7 +24,7 @@ const formasCobrancaSgcor = ['Boleto', 'Cartão de Crédito', 'Débito em Conta'
 const ABAS_FORM = ['Dados Principais', 'Dados do Seguro', 'Coberturas', 'Financeiro', 'Observações', 'Anexos']
 
 const emptyForm = {
-  clienteId: '', cliente: '', tipoSeguro: 'Auto', subcategorias: [], ramo: '',
+  clienteId: '', cliente: '', tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
   seguradoraId: '', seguradora: '', numero: '', numeroProposta: '',
   corretor: 'Carlos Silva', status: 'ativa', dataEmissao: '', inicioVigencia: '', fimVigencia: '', dataRenovacao: '', canal: 'Corretor',
   premioBruto: '', premioLiquido: '', formaPagamento: 'Boleto', parcelas: '12', valorParcela: '', vencimentoPrimeiraParcela: '',
@@ -95,7 +95,8 @@ export default function Apolices() {
   const [page, setPage] = useState(1)
   const PER_PAGE = 20
   useEffect(() => { setPage(1) }, [search, filterStatus, filterTipo, filterVenc])
-  const { getTipos, getSubcategorias, getRamo } = useCatalogo()
+  const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo } = useCatalogo()
+  const [expandCobs, setExpandCobs] = useState(false)
 
   const filtered = apolices.filter(a => {
     const q = search.toLowerCase()
@@ -436,18 +437,23 @@ export default function Apolices() {
               </div>
               <div>
                 <label className="hud-label mb-1">Tipo de Seguro *</label>
-                <select value={form.tipoSeguro} onChange={e => setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], ramo: getRamo(e.target.value) }))} className={inputCls}>
+                <select value={form.tipoSeguro} onChange={e => { setExpandCobs(false); setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], coberturas: [], ramo: getRamo(e.target.value) })) }} className={inputCls}>
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="hud-label mb-1">Coberturas / Subcategoria</label>
+                <label className="hud-label mb-1">Subtipo / Ramo</label>
                 <div className="flex flex-wrap gap-1.5 mt-1 min-h-[32px]">
                   {getSubcategorias(form.tipoSeguro).map(s => {
                     const sel = (form.subcategorias || []).includes(s.nome)
                     return (
                       <button key={s.id} type="button"
-                        onClick={() => setForm(f => { const arr = f.subcategorias || []; return { ...f, subcategorias: arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome] } })}
+                        onClick={() => setForm(f => {
+                          const arr = f.subcategorias || []
+                          const newSubs = arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome]
+                          const validCobs = getCoberturasDaSelecao(f.tipoSeguro, newSubs)
+                          return { ...f, subcategorias: newSubs, coberturas: (f.coberturas || []).filter(c => validCobs.includes(c)) }
+                        })}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${sel ? 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-cyber-cyan/30'}`}>
                         {s.nome}
                       </button>
@@ -458,6 +464,33 @@ export default function Apolices() {
                   )}
                 </div>
               </div>
+              {(form.subcategorias || []).length > 0 && (() => {
+                const allCobs = getCoberturasDaSelecao(form.tipoSeguro, form.subcategorias)
+                const visible = expandCobs ? allCobs : allCobs.slice(0, 8)
+                return (
+                  <div className="col-span-2">
+                    <label className="hud-label mb-1">Coberturas{(form.coberturas || []).length > 0 ? ` — ${(form.coberturas || []).length} selecionada${(form.coberturas || []).length > 1 ? 's' : ''}` : ''}</label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {visible.map(c => {
+                        const sel = (form.coberturas || []).includes(c)
+                        return (
+                          <button key={c} type="button"
+                            onClick={() => setForm(f => { const arr = f.coberturas || []; return { ...f, coberturas: arr.includes(c) ? arr.filter(x => x !== c) : [...arr, c] } })}
+                            className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${sel ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-purple-500/30'}`}>
+                            {c}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {allCobs.length > 8 && (
+                      <button type="button" onClick={() => setExpandCobs(v => !v)}
+                        className="mt-1 text-[10px] text-cyber-muted hover:text-cyber-cyan transition-colors">
+                        {expandCobs ? 'Ver menos ▲' : `Ver mais ▼ (${allCobs.length - 8} ocultas)`}
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
               <div>
                 <label className="hud-label mb-1">Seguradora</label>
                 <select value={form.seguradoraId} onChange={e => { const s = seguradoras.find(s => s.id === e.target.value); setForm(f => ({ ...f, seguradoraId: e.target.value, seguradora: s?.nome || '' })) }} className={inputCls}>

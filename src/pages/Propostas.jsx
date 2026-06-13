@@ -20,7 +20,7 @@ const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto',
 const ABAS = ['Dados Gerais', 'Dados do Seguro', 'Valores', 'Observações']
 
 const emptyForm = {
-  cliente: '', tipoSeguro: 'Auto', subcategorias: [], ramo: '',
+  cliente: '', tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
   seguradorasCotadas: [], melhorValor: '', valorApresentado: '',
   premioLiquido: '', premioBruto: '',
   percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
@@ -55,7 +55,8 @@ export default function Propostas() {
   const [showConvertir, setShowConvertir] = useState(false)
   const [aba, setAba] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const { getTipos, getSubcategorias, getRamo, getEntrada } = useCatalogo()
+  const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo, getEntrada } = useCatalogo()
+  const [expandCobs, setExpandCobs] = useState(false)
 
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
     const entrada = getEntrada(tipo)
@@ -155,7 +156,8 @@ export default function Propostas() {
         proposal_id: prop.id, propostaNumero: prop.numero, quote_id: prop.quote_id, cotacaoNumero: prop.cotacaoNumero,
         numeroProposta: prop.numero,
         cliente: prop.cliente, cpfCnpj: prop.cpfCnpj, telefone: prop.telefone, email: prop.email,
-        tipoSeguro: prop.tipoSeguro, seguradora: prop.seguradora, produto: prop.produto,
+        tipoSeguro: prop.tipoSeguro, ramo: prop.ramo || '', subcategorias: prop.subcategorias || [], coberturas: prop.coberturas || [],
+        seguradora: prop.seguradora, produto: prop.produto,
         premioBruto: prop.premioBruto || prop.premio || prop.melhorValor || '', premioLiquido: prop.premioLiquido || prop.premio || '', premio: prop.premioLiquido || prop.premioBruto || prop.premio || prop.melhorValor || '',
         comissaoValor: prop.comissao || '', comissao: prop.comissao || '', comissaoPercentual: prop.percentualComissao || '',
         statusComissao: 'prevista', corretor: prop.responsavel, responsavel: prop.responsavel,
@@ -436,7 +438,8 @@ export default function Propostas() {
                   value={form.tipoSeguro}
                   onChange={e => {
                     const tipo = e.target.value
-                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], ramo: getRamo(tipo) }))
+                    setExpandCobs(false)
+                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], coberturas: [], ramo: getRamo(tipo) }))
                   }}
                   className={inputCls}
                 >
@@ -444,13 +447,18 @@ export default function Propostas() {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="hud-label mb-1">Coberturas / Subcategoria</label>
+                <label className="hud-label mb-1">Subtipo / Ramo</label>
                 <div className="flex flex-wrap gap-1.5 mt-1 min-h-[32px]">
                   {getSubcategorias(form.tipoSeguro).map(s => {
                     const sel = (form.subcategorias || []).includes(s.nome)
                     return (
                       <button key={s.id} type="button"
-                        onClick={() => setForm(f => { const arr = f.subcategorias || []; return { ...f, subcategorias: arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome] } })}
+                        onClick={() => setForm(f => {
+                          const arr = f.subcategorias || []
+                          const newSubs = arr.includes(s.nome) ? arr.filter(x => x !== s.nome) : [...arr, s.nome]
+                          const validCobs = getCoberturasDaSelecao(f.tipoSeguro, newSubs)
+                          return { ...f, subcategorias: newSubs, coberturas: (f.coberturas || []).filter(c => validCobs.includes(c)) }
+                        })}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${sel ? 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-cyber-cyan/30'}`}>
                         {s.nome}
                       </button>
@@ -461,6 +469,33 @@ export default function Propostas() {
                   )}
                 </div>
               </div>
+              {(form.subcategorias || []).length > 0 && (() => {
+                const allCobs = getCoberturasDaSelecao(form.tipoSeguro, form.subcategorias)
+                const visible = expandCobs ? allCobs : allCobs.slice(0, 8)
+                return (
+                  <div className="col-span-2">
+                    <label className="hud-label mb-1">Coberturas{(form.coberturas || []).length > 0 ? ` — ${(form.coberturas || []).length} selecionada${(form.coberturas || []).length > 1 ? 's' : ''}` : ''}</label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {visible.map(c => {
+                        const sel = (form.coberturas || []).includes(c)
+                        return (
+                          <button key={c} type="button"
+                            onClick={() => setForm(f => { const arr = f.coberturas || []; return { ...f, coberturas: arr.includes(c) ? arr.filter(x => x !== c) : [...arr, c] } })}
+                            className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${sel ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-cyber-surface/50 text-cyber-muted border-cyber-border/40 hover:border-purple-500/30'}`}>
+                            {c}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {allCobs.length > 8 && (
+                      <button type="button" onClick={() => setExpandCobs(v => !v)}
+                        className="mt-1 text-[10px] text-cyber-muted hover:text-cyber-cyan transition-colors">
+                        {expandCobs ? 'Ver menos ▲' : `Ver mais ▼ (${allCobs.length - 8} ocultas)`}
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
               <div>
                 <label className="hud-label mb-1">Responsável</label>
                 <select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>
