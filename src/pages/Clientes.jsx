@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2, ThumbsUp, ThumbsDown, Upload, Download } from 'lucide-react'
+import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2, ThumbsUp, ThumbsDown, Upload, Download, Link2 } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
@@ -44,6 +44,7 @@ export default function Clientes() {
   const { data: propostas } = useResource('propostas')
   const { data: sinistros } = useResource('sinistros')
   const { data: documentos, update: updateDoc, create: createDoc } = useResource('documentos')
+  const { data: solicitacoes, update: updateSolicitation } = useResource('solicitacoes_documentos')
   const [search, setSearch] = useState('')
   const [filterTipo, setFilterTipo] = useState('Todos')
   const [filterStatus, setFilterStatus] = useState('Todos')
@@ -167,6 +168,12 @@ export default function Clientes() {
   ) : []
   const sinistrosCliente = selected ? sinistros.filter(s => s.clienteId === selected.id) : []
   const documentosCliente = selected ? documentos.filter(d => d.clienteId === selected.id) : []
+  const solicitacoesCliente = selected ? solicitacoes.filter(s =>
+    s.clienteId === selected.id ||
+    cotacoesCliente.some(c => c.id === s.origemId) ||
+    propostasCliente.some(p => p.id === s.origemId)
+  ) : []
+  const totalDocsPortal = solicitacoesCliente.reduce((acc, s) => acc + (s.documentos?.length || 0), 0)
 
   async function aprovarDocumento(doc) {
     try {
@@ -178,6 +185,22 @@ export default function Clientes() {
     try {
       await updateDoc(doc.id, { ...doc, status: 'rejeitado' })
       showToast(`Documento "${doc.nome}" rejeitado.`)
+    } catch { showToast('Erro ao rejeitar.', 'error') }
+  }
+
+  async function aprovarDocPortal(sol, idx) {
+    try {
+      const novaDocs = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'aprovado', dataAprovacao: new Date().toISOString().split('T')[0] } : d)
+      const todosAprovados = novaDocs.every(d => d.status === 'aprovado')
+      await updateSolicitation(sol.id, { ...sol, documentos: novaDocs, status: todosAprovados ? 'concluido' : sol.status })
+      showToast('Documento aprovado!')
+    } catch { showToast('Erro ao aprovar.', 'error') }
+  }
+  async function rejeitarDocPortal(sol, idx) {
+    try {
+      const novaDocs = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'recusado' } : d)
+      await updateSolicitation(sol.id, { ...sol, documentos: novaDocs })
+      showToast('Documento rejeitado.')
     } catch { showToast('Erro ao rejeitar.', 'error') }
   }
 
@@ -235,7 +258,7 @@ export default function Clientes() {
     { key: 'propostas', label: `Propostas (${propostasCliente.length})` },
     { key: 'apolices', label: `Apólices (${apolicesCliente.length})` },
     { key: 'sinistros', label: `Sinistros (${sinistrosCliente.length})` },
-    { key: 'documentos', label: `Documentos (${documentosCliente.length})` },
+    { key: 'documentos', label: `Documentos (${documentosCliente.length + totalDocsPortal})` },
   ]
 
   const Field = ({ label, value }) => (
@@ -860,24 +883,82 @@ export default function Clientes() {
             )}
 
             {activeTab === 'documentos' && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex justify-end">
                   <Button icon={<Plus size={14} />} onClick={() => { setDocForm({ tipo: 'CPF', nome: '', observacoes: '', dataUrl: '', fileType: '', fileSize: 0 }); setShowDocModal(true) }}>
                     Novo Documento
                   </Button>
                 </div>
-                {documentosCliente.length === 0 ? (
-                  <EmptyState icon={<Paperclip size={24} />} title="Sem documentos" description="Nenhum documento vinculado a este cliente." />
-                ) : (
-                  <>
-                    <div className="flex gap-3 text-xs text-cyber-muted mb-1">
-                      <span>{documentosCliente.length} documento{documentosCliente.length !== 1 ? 's' : ''}</span>
-                      <span>·</span>
-                      <span className="text-cyber-green">{documentosCliente.filter(d => d.status === 'aprovado').length} aprovados</span>
-                      {documentosCliente.filter(d => d.status === 'pendente').length > 0 && (
-                        <><span>·</span><span className="text-cyber-amber">{documentosCliente.filter(d => d.status === 'pendente').length} pendentes</span></>
-                      )}
-                    </div>
+
+                {/* Solicitações do Portal */}
+                {solicitacoesCliente.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold text-cyber-cyan uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 size={11} /> Portal de Documentos
+                    </p>
+                    {solicitacoesCliente.map(sol => {
+                      const total = sol.documentos?.length || 0
+                      const enviados = sol.documentos?.filter(d => ['enviado', 'aprovado'].includes(d.status)).length || 0
+                      const aprovados = sol.documentos?.filter(d => d.status === 'aprovado').length || 0
+                      return (
+                        <div key={sol.id} className="border border-cyber-border/40 rounded-xl overflow-hidden">
+                          <div className="flex items-center justify-between px-3 py-2.5 bg-cyber-surface/50">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-cyber-text">{sol.origemNumero || `Solicitação #${sol.id.slice(-6)}`} · {sol.tipoSeguro}</p>
+                              <p className="text-xs text-cyber-muted">{sol.createdAt} · {aprovados}/{total} aprovados</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="w-20 bg-cyber-border/30 rounded-full h-1.5">
+                                <div className={`h-1.5 rounded-full transition-all ${aprovados === total && total > 0 ? 'bg-cyber-green' : 'bg-cyber-cyan'}`} style={{ width: `${total ? (enviados / total) * 100 : 0}%` }} />
+                              </div>
+                              <span className="text-[10px] text-cyber-muted">{enviados}/{total}</span>
+                            </div>
+                          </div>
+                          <div className="divide-y divide-cyber-border/20">
+                            {(sol.documentos || []).map((doc, idx) => (
+                              <div key={idx} className="flex items-center gap-3 px-3 py-2 hover:bg-cyber-surface/20 transition-colors">
+                                <div className="w-7 h-7 rounded-lg bg-cyber-surface flex items-center justify-center shrink-0">
+                                  <Paperclip size={12} className={doc.dataUrl ? 'text-cyber-cyan' : 'text-cyber-muted'} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-cyber-text truncate">{doc.tipo}</p>
+                                  {doc.nome && <p className="text-[10px] text-cyber-muted truncate">📎 {doc.nome}</p>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {doc.status === 'aprovado' && <span className="flex items-center gap-1 text-[10px] text-cyber-green font-semibold"><CheckCircle size={10} /> Aprovado</span>}
+                                  {doc.status === 'pendente' && <span className="text-[10px] text-cyber-muted">Aguardando</span>}
+                                  {doc.status === 'enviado' && <span className="flex items-center gap-1 text-[10px] text-cyber-cyan font-semibold"><Clock size={10} /> Em análise</span>}
+                                  {doc.status === 'recusado' && <span className="flex items-center gap-1 text-[10px] text-cyber-red font-semibold"><XCircle size={10} /> Recusado</span>}
+                                  {doc.dataUrl && (doc.fileType?.startsWith('image/') || doc.fileType === 'application/pdf') && (
+                                    <button onClick={() => setPreviewDocCliente(doc)} className="p-1 rounded text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors"><Eye size={12} /></button>
+                                  )}
+                                  {doc.dataUrl && (
+                                    <button onClick={() => downloadDocumento(doc)} className="p-1 rounded text-cyber-muted hover:bg-cyber-surface transition-colors"><Download size={12} /></button>
+                                  )}
+                                  {doc.status === 'enviado' && (
+                                    <>
+                                      <button onClick={() => aprovarDocPortal(sol, idx)} title="Aprovar" className="p-1 rounded text-cyber-green hover:bg-cyber-green/10 transition-colors"><ThumbsUp size={12} /></button>
+                                      <button onClick={() => rejeitarDocPortal(sol, idx)} title="Rejeitar" className="p-1 rounded text-cyber-red hover:bg-red-50 transition-colors"><ThumbsDown size={12} /></button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Documentos internos */}
+                {documentosCliente.length > 0 && (
+                  <div className="space-y-2">
+                    {solicitacoesCliente.length > 0 && (
+                      <p className="text-[11px] font-bold text-cyber-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <Paperclip size={11} /> Documentos Internos
+                      </p>
+                    )}
                     {documentosCliente.map(d => (
                       <div key={d.id} className="flex items-start gap-3 p-3 border border-cyber-border/40 rounded-xl hover:border-cyber-cyan/20 transition-colors">
                         <div className="w-9 h-9 rounded-lg bg-cyber-cyan/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -896,30 +977,26 @@ export default function Clientes() {
                           {d.status === 'rejeitado' && <span className="flex items-center gap-1 text-xs text-cyber-red font-medium"><XCircle size={12} /> Rejeitado</span>}
                           <div className="flex gap-1 mt-1">
                             {d.dataUrl && (d.fileType?.startsWith('image/') || d.fileType === 'application/pdf') && (
-                              <button onClick={() => setPreviewDocCliente(d)} title="Visualizar" className="p-1 rounded-md text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors">
-                                <Eye size={13} />
-                              </button>
+                              <button onClick={() => setPreviewDocCliente(d)} title="Visualizar" className="p-1 rounded-md text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors"><Eye size={13} /></button>
                             )}
                             {d.dataUrl && (
-                              <button onClick={() => downloadDocumento(d)} title="Baixar" className="p-1 rounded-md text-cyber-muted hover:bg-cyber-surface transition-colors">
-                                <Download size={13} />
-                              </button>
+                              <button onClick={() => downloadDocumento(d)} title="Baixar" className="p-1 rounded-md text-cyber-muted hover:bg-cyber-surface transition-colors"><Download size={13} /></button>
                             )}
                             {['pendente', 'enviado'].includes(d.status) && (
                               <>
-                                <button onClick={() => aprovarDocumento(d)} title="Aprovar" className="p-1 rounded-md text-cyber-green hover:bg-cyber-green/10 transition-colors">
-                                  <ThumbsUp size={13} />
-                                </button>
-                                <button onClick={() => rejeitarDocumento(d)} title="Rejeitar" className="p-1 rounded-md text-cyber-red hover:bg-cyber-red/10 transition-colors">
-                                  <ThumbsDown size={13} />
-                                </button>
+                                <button onClick={() => aprovarDocumento(d)} title="Aprovar" className="p-1 rounded-md text-cyber-green hover:bg-cyber-green/10 transition-colors"><ThumbsUp size={13} /></button>
+                                <button onClick={() => rejeitarDocumento(d)} title="Rejeitar" className="p-1 rounded-md text-cyber-red hover:bg-cyber-red/10 transition-colors"><ThumbsDown size={13} /></button>
                               </>
                             )}
                           </div>
                         </div>
                       </div>
                     ))}
-                  </>
+                  </div>
+                )}
+
+                {documentosCliente.length === 0 && solicitacoesCliente.length === 0 && (
+                  <EmptyState icon={<Paperclip size={24} />} title="Sem documentos" description="Nenhum documento vinculado a este cliente." />
                 )}
               </div>
             )}

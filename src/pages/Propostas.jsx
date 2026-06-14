@@ -50,6 +50,7 @@ export default function Propostas() {
   const { data: endossos } = useResource('endossos')
   const { data: historico, refetch: refetchHist } = useResource('historico')
   const { data: leads, update: updateLead } = useResource('leads')
+  const { data: solicitacoes, update: updateSolicitation } = useResource('solicitacoes_documentos')
 
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
@@ -321,6 +322,7 @@ export default function Propostas() {
         <>
           <KanbanPropostas
             propostas={ativas}
+            solicitacoes={solicitacoes}
             onDropStatus={(prop, status) => alterarStatus(prop, status)}
             onOpen={p => { setSelected(p); setShowDetalhes(true) }}
           />
@@ -378,6 +380,53 @@ export default function Propostas() {
               ))}
             </div>
             {selected.observacoes && <div className="p-3 bg-cyber-surface/60 rounded-xl"><p className="text-xs text-cyber-muted mb-1">Observações</p><p className="text-sm text-cyber-text/80">{selected.observacoes}</p></div>}
+
+            {/* Documentos do Portal */}
+            {(() => {
+              const sols = solicitacoes.filter(s => s.origemId === selected.id)
+              if (!sols.length) return null
+              return (
+                <div>
+                  <p className="hud-label mb-2 flex items-center gap-1.5"><FolderUp size={12} /> Documentos do Portal</p>
+                  <div className="space-y-2">
+                    {sols.map(sol => {
+                      const total = sol.documentos?.length || 0
+                      const aprovados = sol.documentos?.filter(d => d.status === 'aprovado').length || 0
+                      const pendentes = sol.documentos?.filter(d => d.status === 'enviado').length || 0
+                      return (
+                        <div key={sol.id} className="border border-cyber-border/40 rounded-xl overflow-hidden">
+                          <div className="flex items-center justify-between px-3 py-2 bg-cyber-surface/50">
+                            <p className="text-xs font-semibold text-cyber-text">Solicitação de {sol.createdAt}</p>
+                            <div className="flex items-center gap-2">
+                              {pendentes > 0 && <span className="text-[10px] font-semibold text-cyber-cyan bg-cyber-cyan/10 px-2 py-0.5 rounded-full">{pendentes} aguardando revisão</span>}
+                              <span className="text-[10px] text-cyber-muted">{aprovados}/{total} aprovados</span>
+                            </div>
+                          </div>
+                          <div className="divide-y divide-cyber-border/20">
+                            {(sol.documentos || []).map((doc, idx) => (
+                              <div key={idx} className="flex items-center gap-2 px-3 py-1.5">
+                                <span className="flex-1 text-xs text-cyber-text truncate">{doc.tipo}</span>
+                                {doc.status === 'aprovado' && <span className="text-[10px] text-cyber-green font-medium">✓ Aprovado</span>}
+                                {doc.status === 'pendente' && <span className="text-[10px] text-cyber-muted">Aguardando</span>}
+                                {doc.status === 'enviado' && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-cyber-cyan font-medium">Enviado</span>
+                                    <button onClick={() => { const nd = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'aprovado' } : d); updateSolicitation(sol.id, { ...sol, documentos: nd }) }} className="text-[10px] text-cyber-green hover:underline">Aprovar</button>
+                                    <button onClick={() => { const nd = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'recusado' } : d); updateSolicitation(sol.id, { ...sol, documentos: nd }) }} className="text-[10px] text-cyber-red hover:underline">Recusar</button>
+                                  </div>
+                                )}
+                                {doc.status === 'recusado' && <span className="text-[10px] text-cyber-red font-medium">✗ Recusado</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
+
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={() => openEdit(selected)}>Editar</Button>
             </div>
@@ -705,7 +754,7 @@ export default function Propostas() {
   )
 }
 
-function KanbanPropostas({ propostas, onDropStatus, onOpen }) {
+function KanbanPropostas({ propostas, onDropStatus, onOpen, solicitacoes = [] }) {
   const [dragId, setDragId] = useState(null)
   return (
     <div className="overflow-x-auto pb-2 -mx-1 px-1">
@@ -733,9 +782,15 @@ function KanbanPropostas({ propostas, onDropStatus, onOpen }) {
                     <p className="text-xs text-cyber-muted mt-0.5">{p.tipoSeguro}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs font-bold text-cyber-text">{p.melhorValor ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.melhorValor) : '—'}</span>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap justify-end">
                         {(p.lead_id || p.leadId) && <span className="text-[10px] text-cyber-amber/90 bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium">🔗 Lead</span>}
                         {p.converted_policy_id && <Badge color="green">Pólice</Badge>}
+                        {(() => {
+                          const sol = solicitacoes.find(s => s.origemId === p.id)
+                          if (!sol) return null
+                          const pend = sol.documentos?.filter(d => d.status === 'enviado').length || 0
+                          return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${pend > 0 ? 'text-cyber-cyan bg-cyber-cyan/10' : 'text-cyber-muted bg-cyber-surface'}`}>📄 {pend > 0 ? `${pend} p/ revisar` : 'Docs'}</span>
+                        })()}
                       </div>
                     </div>
                     <p className="text-[10px] text-cyber-muted mt-1">{p.responsavel?.split(' ')[0]}</p>

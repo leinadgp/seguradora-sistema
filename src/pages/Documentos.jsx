@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Upload, Folder, CheckCircle, Clock, XCircle, AlertCircle, Trash2, Eye, Download, X as XIcon } from 'lucide-react'
+import { Plus, Search, Upload, Folder, CheckCircle, Clock, XCircle, AlertCircle, Trash2, Eye, Download, X as XIcon, Link2, ThumbsUp, ThumbsDown } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import { StatusBadge } from '../components/ui/Badge'
@@ -30,8 +30,10 @@ export default function Documentos() {
   const { showToast } = useApp()
   const { data: docs, create, update, remove } = useResource('documentos')
   const { data: clientes } = useResource('clientes')
+  const { data: solicitacoes, update: updateSolicitation } = useResource('solicitacoes_documentos')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
+  const [abaPortal, setAbaPortal] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -115,36 +117,124 @@ export default function Documentos() {
   const pendentes = docs.filter(d => d.status === 'pendente').length
   const enviados = docs.filter(d => d.status === 'enviado').length
   const aprovados = docs.filter(d => d.status === 'aprovado').length
+  const aguardandoPortal = solicitacoes.reduce((acc, s) => acc + (s.documentos?.filter(d => d.status === 'enviado').length || 0), 0)
+
+  async function aprovarPortalDoc(sol, idx) {
+    const nd = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'aprovado', dataAprovacao: new Date().toISOString().split('T')[0] } : d)
+    await updateSolicitation(sol.id, { ...sol, documentos: nd })
+    showToast('Documento aprovado!')
+  }
+  async function rejeitarPortalDoc(sol, idx) {
+    const nd = sol.documentos.map((d, i) => i === idx ? { ...d, status: 'recusado' } : d)
+    await updateSolicitation(sol.id, { ...sol, documentos: nd })
+    showToast('Documento rejeitado.')
+  }
 
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[['Pendentes', pendentes, 'bg-cyber-amber/5 text-cyber-amber border border-cyber-amber/20'], ['Enviados', enviados, 'bg-cyber-cyan/5 text-cyber-cyan border border-cyber-cyan/20'], ['Aprovados', aprovados, 'bg-cyber-green/5 text-cyber-green border border-cyber-green/20']].map(([l, v, cls]) => (
           <div key={l} className={`rounded-2xl p-4 text-center ${cls}`}>
             <p className="text-2xl font-bold">{v}</p>
             <p className="text-sm font-medium">{l}</p>
           </div>
         ))}
+        <button onClick={() => setAbaPortal(v => !v)} className={`rounded-2xl p-4 text-center border transition-colors ${abaPortal ? 'bg-blue-500/10 text-blue-400 border-blue-400/30' : aguardandoPortal > 0 ? 'bg-cyber-cyan/5 text-cyber-cyan border-cyber-cyan/20 animate-pulse' : 'bg-cyber-surface text-cyber-muted border-cyber-border/30'}`}>
+          <p className="text-2xl font-bold">{aguardandoPortal || solicitacoes.length}</p>
+          <p className="text-sm font-medium flex items-center justify-center gap-1"><Link2 size={13} /> Portal</p>
+        </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyber-muted" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar documento, cliente, tipo..." className="w-full pl-9 pr-4 py-2.5 text-sm border border-cyber-border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyber-cyan/20 focus:border-cyber-cyan/70 bg-cyber-card" />
+      {/* Aba Portal */}
+      {abaPortal && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-cyber-text flex items-center gap-2"><Link2 size={15} className="text-cyber-cyan" /> Solicitações do Portal ({solicitacoes.length})</p>
+            <button onClick={() => setAbaPortal(false)} className="text-xs text-cyber-muted hover:text-cyber-text transition-colors">← Voltar aos documentos internos</button>
+          </div>
+          {solicitacoes.length === 0 ? (
+            <EmptyState icon={<Link2 size={28} />} title="Nenhuma solicitação" description="Nenhum link de documentos foi gerado ainda." />
+          ) : (
+            <div className="space-y-3">
+              {solicitacoes.map(sol => {
+                const total = sol.documentos?.length || 0
+                const enviados2 = sol.documentos?.filter(d => ['enviado', 'aprovado'].includes(d.status)).length || 0
+                const aprovados2 = sol.documentos?.filter(d => d.status === 'aprovado').length || 0
+                return (
+                  <div key={sol.id} className="bg-cyber-card rounded-2xl border border-cyber-border/40 shadow-card overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-cyber-border/30 bg-cyber-surface/40">
+                      <div>
+                        <p className="text-sm font-semibold text-cyber-text">{sol.cliente} · <span className="text-cyber-muted font-normal">{sol.tipoSeguro}</span></p>
+                        <p className="text-xs text-cyber-muted">{sol.origemNumero || sol.origemId} · Criado em {sol.createdAt}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-xs font-semibold text-cyber-text">{aprovados2}/{total}</p>
+                          <p className="text-[10px] text-cyber-muted">aprovados</p>
+                        </div>
+                        <div className="w-20 bg-cyber-border/30 rounded-full h-2">
+                          <div className={`h-2 rounded-full ${aprovados2 === total && total > 0 ? 'bg-cyber-green' : 'bg-cyber-cyan'}`} style={{ width: `${total ? (enviados2 / total) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-cyber-border/20">
+                      {(sol.documentos || []).map((doc, idx) => (
+                        <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-cyber-surface/20 transition-colors">
+                          <div className="w-8 h-8 rounded-lg bg-cyber-surface flex items-center justify-center shrink-0">
+                            <Folder size={14} className={doc.dataUrl ? 'text-cyber-cyan' : 'text-cyber-muted'} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-cyber-text">{doc.tipo}</p>
+                            {doc.nome && <p className="text-xs text-cyber-muted truncate">📎 {doc.nome} {doc.fileSize ? `· ${formatBytes(doc.fileSize)}` : ''}</p>}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {doc.status === 'aprovado' && <span className="flex items-center gap-1 text-xs text-cyber-green font-semibold"><CheckCircle size={12} /> Aprovado</span>}
+                            {doc.status === 'pendente' && <span className="text-xs text-cyber-muted">Aguardando</span>}
+                            {doc.status === 'enviado' && <span className="flex items-center gap-1 text-xs text-cyber-cyan font-semibold"><Clock size={12} /> Enviado</span>}
+                            {doc.status === 'recusado' && <span className="flex items-center gap-1 text-xs text-cyber-red font-semibold"><XCircle size={12} /> Recusado</span>}
+                            {doc.dataUrl && (doc.fileType?.startsWith('image/') || doc.fileType === 'application/pdf') && (
+                              <button onClick={() => setPreviewDoc({ ...doc, nome: doc.nome || doc.tipo })} className="flex items-center gap-1 text-xs text-cyber-cyan hover:bg-cyber-cyan/10 px-2 py-1 rounded-lg transition-colors"><Eye size={12} /> Ver</button>
+                            )}
+                            {doc.dataUrl && (
+                              <button onClick={() => downloadDoc({ ...doc, nome: doc.nome || doc.tipo })} className="p-1.5 text-cyber-muted hover:bg-cyber-surface rounded-lg transition-colors"><Download size={12} /></button>
+                            )}
+                            {doc.status === 'enviado' && (
+                              <>
+                                <button onClick={() => aprovarPortalDoc(sol, idx)} className="flex items-center gap-1 text-xs text-cyber-green hover:bg-cyber-green/10 px-2 py-1 rounded-lg transition-colors"><ThumbsUp size={12} /> Aprovar</button>
+                                <button onClick={() => rejeitarPortalDoc(sol, idx)} className="flex items-center gap-1 text-xs text-cyber-red hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"><ThumbsDown size={12} /> Recusar</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
-          <option value="todos">Todos os status</option>
-          {['pendente', 'enviado', 'aprovado', 'recusado'].map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-        </select>
-        <Button onClick={() => { setForm(emptyForm); setShowModal(true) }} icon={<Plus size={16} />}>Novo Documento</Button>
-      </div>
+      )}
 
-      {/* Lista */}
-      {filtered.length === 0 ? (
-        <EmptyState icon={<Folder size={28} />} title="Nenhum documento" description="Adicione documentos dos seus clientes." action={<Button onClick={() => setShowModal(true)} icon={<Plus size={16} />}>Novo Documento</Button>} />
-      ) : (
+      {/* Documentos Internos */}
+      {!abaPortal && (<>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyber-muted" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar documento, cliente, tipo..." className="w-full pl-9 pr-4 py-2.5 text-sm border border-cyber-border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyber-cyan/20 focus:border-cyber-cyan/70 bg-cyber-card" />
+          </div>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none">
+            <option value="todos">Todos os status</option>
+            {['pendente', 'enviado', 'aprovado', 'recusado'].map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+          </select>
+          <Button onClick={() => { setForm(emptyForm); setShowModal(true) }} icon={<Plus size={16} />}>Novo Documento</Button>
+        </div>
+
+        {/* Lista */}
+        {filtered.length === 0 ? (
+          <EmptyState icon={<Folder size={28} />} title="Nenhum documento" description="Adicione documentos dos seus clientes." action={<Button onClick={() => setShowModal(true)} icon={<Plus size={16} />}>Novo Documento</Button>} />
+        ) : (
         <div className="bg-cyber-card rounded-2xl shadow-card border border-cyber-border/40 overflow-hidden">
           <div className="divide-y divide-cyber-border/20">
             {filtered.map(d => (
@@ -202,6 +292,7 @@ export default function Documentos() {
           </div>
         </div>
       )}
+      </>)}
 
       {/* Modal Confirmar Exclusão */}
       {confirmDelete && (
