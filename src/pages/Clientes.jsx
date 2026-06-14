@@ -1,6 +1,6 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2, ThumbsUp, ThumbsDown, Upload, Download } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
@@ -43,7 +43,7 @@ export default function Clientes() {
   const { data: apolices } = useResource('apolices')
   const { data: propostas } = useResource('propostas')
   const { data: sinistros } = useResource('sinistros')
-  const { data: documentos, update: updateDoc } = useResource('documentos')
+  const { data: documentos, update: updateDoc, create: createDoc } = useResource('documentos')
   const [search, setSearch] = useState('')
   const [filterTipo, setFilterTipo] = useState('Todos')
   const [filterStatus, setFilterStatus] = useState('Todos')
@@ -55,6 +55,10 @@ export default function Clientes() {
   const [activeTab, setActiveTab] = useState('dados')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [page, setPage] = useState(1)
+  const [showDocModal, setShowDocModal] = useState(false)
+  const [docForm, setDocForm] = useState({ tipo: 'CPF', nome: '', observacoes: '', dataUrl: '', fileType: '', fileSize: 0 })
+  const [previewDocCliente, setPreviewDocCliente] = useState(null)
+  const docFileRef = useRef(null)
   const PER_PAGE = 20
   useEffect(() => { setPage(1) }, [search, filterTipo, filterStatus])
 
@@ -177,6 +181,54 @@ export default function Clientes() {
     } catch { showToast('Erro ao rejeitar.', 'error') }
   }
 
+  function handleDocFileSelect(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      setDocForm(f => ({
+        ...f,
+        nome: f.nome || `${f.tipo} - ${selected?.nome || 'cliente'}.${file.name.split('.').pop()}`,
+        dataUrl: ev.target.result,
+        fileType: file.type,
+        fileSize: file.size,
+      }))
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  async function salvarDocumento() {
+    if (!docForm.tipo) { showToast('Selecione o tipo de documento.', 'error'); return }
+    const nome = docForm.nome || `${docForm.tipo} - ${selected?.nome}.pdf`
+    try {
+      await createDoc({
+        id: Date.now().toString(),
+        clienteId: selected.id,
+        cliente: selected.nome,
+        tipo: docForm.tipo,
+        nome,
+        status: 'pendente',
+        observacoes: docForm.observacoes,
+        dataUrl: docForm.dataUrl,
+        fileType: docForm.fileType,
+        fileSize: docForm.fileSize,
+        dataEnvio: new Date().toISOString().split('T')[0],
+      })
+      showToast('Documento adicionado!')
+      setShowDocModal(false)
+      setDocForm({ tipo: 'CPF', nome: '', observacoes: '', dataUrl: '', fileType: '', fileSize: 0 })
+    } catch { showToast('Erro ao salvar documento.', 'error') }
+  }
+
+  function downloadDocumento(doc) {
+    if (!doc.dataUrl) { showToast('Nenhum arquivo armazenado.', 'error'); return }
+    const a = document.createElement('a')
+    a.href = doc.dataUrl
+    a.download = doc.nome
+    a.click()
+  }
+
   const detalheTabs = [
     { key: 'dados', label: 'Dados' },
     { key: 'cotacoes', label: `Cotações (${cotacoesCliente.length})` },
@@ -296,6 +348,80 @@ export default function Clientes() {
         >
           <p className="text-sm text-cyber-text">Excluir o cliente <strong className="text-cyber-red">"{confirmDelete.nome}"</strong>?</p>
           <p className="text-xs text-cyber-muted mt-2">Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
+
+      {/* Modal Novo Documento do Cliente */}
+      <input ref={docFileRef} type="file" className="hidden" onChange={handleDocFileSelect} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+      <Modal isOpen={showDocModal} onClose={() => setShowDocModal(false)} title={`Novo Documento — ${selected?.nome}`} size="sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowDocModal(false)}>Cancelar</Button>
+            <Button onClick={salvarDocumento}>Salvar</Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="hud-label mb-1">Tipo de documento</label>
+            <select value={docForm.tipo} onChange={e => setDocForm(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
+              {['CPF', 'RG', 'CNH', 'Comprovante de endereço', 'CNPJ', 'Contrato social', 'Nota fiscal', 'Documento do veículo', 'Matrícula do imóvel', 'Boleto', 'Proposta assinada', 'Apólice', 'Comprovante de pagamento', 'Laudo Técnico', 'B.O.', 'Outros'].map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="hud-label mb-1">Nome do arquivo</label>
+            <input value={docForm.nome} onChange={e => setDocForm(f => ({ ...f, nome: e.target.value }))} className={inputCls} placeholder={`Ex: ${docForm.tipo} - ${selected?.nome}.pdf`} />
+          </div>
+          <div
+            onClick={() => docFileRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${docForm.dataUrl ? 'border-cyber-green/50 bg-cyber-green/5' : 'border-cyber-border hover:border-cyber-cyan/50 hover:bg-cyber-cyan/5'}`}
+          >
+            {docForm.dataUrl ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-cyber-green">
+                  <CheckCircle size={16} />
+                  <span className="truncate max-w-[180px]">{docForm.nome || 'Arquivo selecionado'}</span>
+                </div>
+                <button type="button" onClick={e => { e.stopPropagation(); setDocForm(f => ({ ...f, dataUrl: '', fileType: '', fileSize: 0 })) }} className="text-cyber-muted hover:text-cyber-red">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Upload size={22} className="mx-auto text-cyber-muted mb-2" />
+                <p className="text-sm text-cyber-muted">Clique para selecionar o arquivo</p>
+                <p className="text-xs text-cyber-muted mt-1">PDF, JPG, PNG</p>
+              </>
+            )}
+          </div>
+          <div>
+            <label className="hud-label mb-1">Observações</label>
+            <textarea value={docForm.observacoes} onChange={e => setDocForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className={inputCls + ' resize-none'} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Preview de Documento */}
+      {previewDocCliente && (
+        <Modal isOpen title={previewDocCliente.nome} onClose={() => setPreviewDocCliente(null)} size="xl"
+          footer={
+            <div className="flex justify-between">
+              <Button variant="secondary" onClick={() => setPreviewDocCliente(null)}>Fechar</Button>
+              <Button icon={<Download size={14} />} onClick={() => downloadDocumento(previewDocCliente)}>Baixar</Button>
+            </div>
+          }
+        >
+          <div className="flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto">
+            {previewDocCliente.fileType?.startsWith('image/') ? (
+              <img src={previewDocCliente.dataUrl} alt={previewDocCliente.nome} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
+            ) : previewDocCliente.fileType === 'application/pdf' ? (
+              <object data={previewDocCliente.dataUrl} type="application/pdf" className="w-full h-[65vh] rounded-lg">
+                <p className="text-sm text-cyber-muted text-center">Seu navegador não suporta PDF. <button onClick={() => downloadDocumento(previewDocCliente)} className="text-cyber-cyan underline">Baixar</button>.</p>
+              </object>
+            ) : (
+              <p className="text-sm text-cyber-muted">Tipo sem visualização. <button onClick={() => downloadDocumento(previewDocCliente)} className="text-cyber-cyan underline">Baixar para ver</button>.</p>
+            )}
+          </div>
         </Modal>
       )}
 
@@ -735,6 +861,11 @@ export default function Clientes() {
 
             {activeTab === 'documentos' && (
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <Button icon={<Plus size={14} />} onClick={() => { setDocForm({ tipo: 'CPF', nome: '', observacoes: '', dataUrl: '', fileType: '', fileSize: 0 }); setShowDocModal(true) }}>
+                    Novo Documento
+                  </Button>
+                </div>
                 {documentosCliente.length === 0 ? (
                   <EmptyState icon={<Paperclip size={24} />} title="Sem documentos" description="Nenhum documento vinculado a este cliente." />
                 ) : (
@@ -763,16 +894,28 @@ export default function Clientes() {
                           {d.status === 'pendente' && <span className="flex items-center gap-1 text-xs text-cyber-amber font-medium"><Clock size={12} /> Pendente</span>}
                           {d.status === 'enviado' && <span className="flex items-center gap-1 text-xs text-cyber-cyan font-medium"><FileText size={12} /> Enviado</span>}
                           {d.status === 'rejeitado' && <span className="flex items-center gap-1 text-xs text-cyber-red font-medium"><XCircle size={12} /> Rejeitado</span>}
-                          {['pendente', 'enviado'].includes(d.status) && (
-                            <div className="flex gap-1 mt-1">
-                              <button onClick={() => aprovarDocumento(d)} title="Aprovar" className="p-1 rounded-md text-cyber-green hover:bg-cyber-green/10 transition-colors">
-                                <ThumbsUp size={13} />
+                          <div className="flex gap-1 mt-1">
+                            {d.dataUrl && (d.fileType?.startsWith('image/') || d.fileType === 'application/pdf') && (
+                              <button onClick={() => setPreviewDocCliente(d)} title="Visualizar" className="p-1 rounded-md text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors">
+                                <Eye size={13} />
                               </button>
-                              <button onClick={() => rejeitarDocumento(d)} title="Rejeitar" className="p-1 rounded-md text-cyber-red hover:bg-cyber-red/10 transition-colors">
-                                <ThumbsDown size={13} />
+                            )}
+                            {d.dataUrl && (
+                              <button onClick={() => downloadDocumento(d)} title="Baixar" className="p-1 rounded-md text-cyber-muted hover:bg-cyber-surface transition-colors">
+                                <Download size={13} />
                               </button>
-                            </div>
-                          )}
+                            )}
+                            {['pendente', 'enviado'].includes(d.status) && (
+                              <>
+                                <button onClick={() => aprovarDocumento(d)} title="Aprovar" className="p-1 rounded-md text-cyber-green hover:bg-cyber-green/10 transition-colors">
+                                  <ThumbsUp size={13} />
+                                </button>
+                                <button onClick={() => rejeitarDocumento(d)} title="Rejeitar" className="p-1 rounded-md text-cyber-red hover:bg-cyber-red/10 transition-colors">
+                                  <ThumbsDown size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
