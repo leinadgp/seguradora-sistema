@@ -167,6 +167,8 @@ export default function Propostas() {
         id, numero,
         proposal_id: prop.id, propostaNumero: prop.numero, quote_id: prop.quote_id, cotacaoNumero: prop.cotacaoNumero,
         numeroProposta: prop.numero,
+        clienteId: prop.clienteId || '',
+        lead_id: prop.lead_id || '',
         cliente: prop.cliente, cpfCnpj: prop.cpfCnpj || '',
         telefone: prop.telefone || '', whatsapp: prop.whatsapp || '', email: prop.email || '',
         tipoSeguro: prop.tipoSeguro, ramo: prop.ramo || '', subcategorias: prop.subcategorias || [], coberturas: prop.coberturas || [],

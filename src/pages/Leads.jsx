@@ -183,6 +183,7 @@ export default function Leads() {
         const cotId = Date.now().toString()
         await createCotacao({
           id: cotId, numero,
+          clienteId: leadAtual.cliente_id || '',
           lead_id: leadAtual.id,
           cliente: leadAtual.nome,
           telefone: leadAtual.telefone || '',

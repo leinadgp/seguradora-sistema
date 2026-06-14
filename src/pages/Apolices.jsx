@@ -101,6 +101,7 @@ export default function Apolices() {
   useEffect(() => { setPage(1) }, [search, filterStatus, filterTipo, filterVenc])
   const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo } = useCatalogo()
   const [expandCobs, setExpandCobs] = useState(false)
+  const [previewAnexo, setPreviewAnexo] = useState(null)
 
   const filtered = apolices.filter(a => {
     const q = search.toLowerCase()
@@ -395,6 +396,35 @@ export default function Apolices() {
               )}
             </div>
 
+            {(selected.anexos || []).length > 0 && (
+              <div>
+                <p className="hud-label mb-2">Anexos ({selected.anexos.length})</p>
+                <div className="space-y-2">
+                  {selected.anexos.map(anexo => (
+                    <div key={anexo.id} className="flex items-center gap-3 p-3 bg-cyber-surface/50 rounded-xl border border-cyber-border/40">
+                      <div className="w-9 h-9 rounded-lg bg-cyber-cyan/10 flex items-center justify-center shrink-0">
+                        <Paperclip size={15} className="text-cyber-cyan" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-cyber-text truncate">{anexo.nome}</p>
+                        <p className="text-xs text-cyber-muted">{formatBytes(anexo.tamanho)} · {anexo.data}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {(anexo.tipo?.startsWith('image/') || anexo.tipo === 'application/pdf') && (
+                          <button onClick={() => setPreviewAnexo(anexo)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Visualizar">
+                            <Eye size={13} />
+                          </button>
+                        )}
+                        <button onClick={() => downloadAnexo(anexo)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Baixar">
+                          <Download size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <p className="hud-label mb-2">Histórico</p>
               <Timeline events={eventos} />
@@ -402,6 +432,30 @@ export default function Apolices() {
           </div>
         )}
       </Modal>
+
+      {/* Modal Preview de Anexo */}
+      {previewAnexo && (
+        <Modal isOpen title={previewAnexo.nome} onClose={() => setPreviewAnexo(null)} size="xl"
+          footer={
+            <div className="flex justify-between">
+              <Button variant="secondary" onClick={() => setPreviewAnexo(null)}>Fechar</Button>
+              <Button icon={<Download size={14} />} onClick={() => downloadAnexo(previewAnexo)}>Baixar</Button>
+            </div>
+          }
+        >
+          <div className="flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto">
+            {previewAnexo.tipo?.startsWith('image/') ? (
+              <img src={previewAnexo.dataUrl} alt={previewAnexo.nome} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
+            ) : previewAnexo.tipo === 'application/pdf' ? (
+              <object data={previewAnexo.dataUrl} type="application/pdf" className="w-full h-[65vh] rounded-lg">
+                <p className="text-sm text-cyber-muted text-center">Seu navegador não suporta visualização de PDF. <button onClick={() => downloadAnexo(previewAnexo)} className="text-cyber-cyan underline">Baixar arquivo</button>.</p>
+              </object>
+            ) : (
+              <p className="text-sm text-cyber-muted text-center">Tipo de arquivo sem visualização. <button onClick={() => downloadAnexo(previewAnexo)} className="text-cyber-cyan underline">Baixar para ver</button>.</p>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* Modal Cadastro/Edição */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={isEditing ? 'Editar Apólice' : 'Nova Apólice'} size="xl"
@@ -681,6 +735,11 @@ export default function Apolices() {
                       <p className="text-xs text-cyber-muted">{formatBytes(anexo.tamanho)} · {anexo.data}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {(anexo.tipo?.startsWith('image/') || anexo.tipo === 'application/pdf') && (
+                        <button onClick={() => setPreviewAnexo(anexo)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Visualizar">
+                          <Eye size={13} />
+                        </button>
+                      )}
                       <button onClick={() => downloadAnexo(anexo)} className="p-1.5 rounded-lg hover:bg-cyber-cyan/10 text-cyber-muted hover:text-cyber-cyan transition-colors cursor-pointer" title="Baixar">
                         <Download size={13} />
                       </button>

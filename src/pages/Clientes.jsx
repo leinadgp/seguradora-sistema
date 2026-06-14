@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
-import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Plus, Eye, Edit2, User, Building2, Phone, Mail, MapPin, FileText, ClipboardList, AlertTriangle, Paperclip, CheckCircle, Clock, XCircle, X, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
@@ -32,14 +33,17 @@ function fmtMoeda(v) {
 
 export default function Clientes() {
   const { showToast } = useApp()
+  const navigate = useNavigate()
   const { data: clientes, create, update, remove } = useResource('clientes')
   const { data: usuarios } = useResource('usuarios')
   const { data: produtores } = useResource('produtores')
   const { data: seguradoras } = useResource('seguradoras')
+  const { data: leads } = useResource('leads')
+  const { data: cotacoes } = useResource('cotacoes')
   const { data: apolices } = useResource('apolices')
   const { data: propostas } = useResource('propostas')
   const { data: sinistros } = useResource('sinistros')
-  const { data: documentos } = useResource('documentos')
+  const { data: documentos, update: updateDoc } = useResource('documentos')
   const [search, setSearch] = useState('')
   const [filterTipo, setFilterTipo] = useState('Todos')
   const [filterStatus, setFilterStatus] = useState('Todos')
@@ -134,15 +138,50 @@ export default function Clientes() {
     }
   }
 
-  const apolicesCliente = selected ? apolices.filter(a => a.clienteId === selected.id) : []
-  const propostasCliente = selected ? propostas.filter(p => p.clienteId === selected.id) : []
+  // Traversal: cliente → lead → cotação → proposta → apólice
+  const leadVinculado = selected
+    ? (leads.find(l => l.id === selected.lead_id || l.cliente_id === selected.id) || null)
+    : null
+  const cotacaoVinculada = leadVinculado
+    ? (cotacoes.find(c => c.id === leadVinculado.cotacao_id) || null)
+    : null
+  const propostaVinculadaId = cotacaoVinculada?.converted_proposal_id || null
+  const propostaVinculada = propostaVinculadaId
+    ? (propostas.find(p => p.id === propostaVinculadaId) || null)
+    : null
+  const apoliceVinculadaId = propostaVinculada?.converted_policy_id || null
+
+  // Filtros: clienteId direto OU via traversal
+  const apolicesCliente = selected ? apolices.filter(a =>
+    a.clienteId === selected.id || a.id === apoliceVinculadaId || a.lead_id === leadVinculado?.id
+  ) : []
+  const propostasCliente = selected ? propostas.filter(p =>
+    p.clienteId === selected.id || p.id === propostaVinculadaId || p.lead_id === leadVinculado?.id
+  ) : []
+  const cotacoesCliente = selected ? cotacoes.filter(c =>
+    c.clienteId === selected.id || c.id === cotacaoVinculada?.id || c.lead_id === leadVinculado?.id
+  ) : []
   const sinistrosCliente = selected ? sinistros.filter(s => s.clienteId === selected.id) : []
   const documentosCliente = selected ? documentos.filter(d => d.clienteId === selected.id) : []
 
+  async function aprovarDocumento(doc) {
+    try {
+      await updateDoc(doc.id, { ...doc, status: 'aprovado' })
+      showToast(`Documento "${doc.nome}" aprovado!`)
+    } catch { showToast('Erro ao aprovar.', 'error') }
+  }
+  async function rejeitarDocumento(doc) {
+    try {
+      await updateDoc(doc.id, { ...doc, status: 'rejeitado' })
+      showToast(`Documento "${doc.nome}" rejeitado.`)
+    } catch { showToast('Erro ao rejeitar.', 'error') }
+  }
+
   const detalheTabs = [
     { key: 'dados', label: 'Dados' },
-    { key: 'apolices', label: `Apólices (${apolicesCliente.length})` },
+    { key: 'cotacoes', label: `Cotações (${cotacoesCliente.length})` },
     { key: 'propostas', label: `Propostas (${propostasCliente.length})` },
+    { key: 'apolices', label: `Apólices (${apolicesCliente.length})` },
     { key: 'sinistros', label: `Sinistros (${sinistrosCliente.length})` },
     { key: 'documentos', label: `Documentos (${documentosCliente.length})` },
   ]
@@ -580,6 +619,61 @@ export default function Clientes() {
                     <p className="text-sm text-cyber-amber">{selected.observacoes}</p>
                   </div>
                 )}
+                {/* Pipeline */}
+                {leadVinculado && (
+                  <div className="p-4 bg-cyber-surface/60 border border-cyber-border/40 rounded-xl">
+                    <p className="hud-label mb-3">Pipeline</p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <button onClick={() => navigate('/leads')} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyber-amber/10 text-cyber-amber font-medium hover:bg-cyber-amber/20 transition-colors">
+                        <User size={11} /> Lead · {leadVinculado.status}
+                      </button>
+                      {cotacaoVinculada && (
+                        <>
+                          <span className="text-cyber-muted">→</span>
+                          <button onClick={() => navigate(`/cotacoes?focus=${cotacaoVinculada.id}`)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyber-cyan/10 text-cyber-cyan font-medium hover:bg-cyber-cyan/20 transition-colors">
+                            <FileText size={11} /> {cotacaoVinculada.numero} · {cotacaoVinculada.status}
+                          </button>
+                        </>
+                      )}
+                      {propostaVinculada && (
+                        <>
+                          <span className="text-cyber-muted">→</span>
+                          <button onClick={() => navigate(`/propostas?focus=${propostaVinculada.id}`)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyber-purple/10 text-cyber-purple font-medium hover:bg-cyber-purple/20 transition-colors">
+                            <ClipboardList size={11} /> {propostaVinculada.numero} · {propostaVinculada.status}
+                          </button>
+                        </>
+                      )}
+                      {apoliceVinculadaId && apolices.find(a => a.id === apoliceVinculadaId) && (
+                        <>
+                          <span className="text-cyber-muted">→</span>
+                          <button onClick={() => navigate(`/apolices?focus=${apoliceVinculadaId}`)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyber-green/10 text-cyber-green font-medium hover:bg-cyber-green/20 transition-colors">
+                            <CheckCircle size={11} /> {apolices.find(a => a.id === apoliceVinculadaId)?.numero} · Ativa
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'cotacoes' && (
+              <div className="space-y-2">
+                {cotacoesCliente.length === 0 ? <EmptyState icon={<FileText size={24} />} title="Sem cotações" description="Nenhuma cotação vinculada a este cliente." /> :
+                  cotacoesCliente.map(c => (
+                    <button key={c.id} onClick={() => navigate(`/cotacoes?focus=${c.id}`)}
+                      className="w-full flex items-center justify-between p-3 border border-cyber-border/40 rounded-xl hover:border-cyber-cyan/30 hover:bg-cyber-cyan/5 transition-colors text-left">
+                      <div>
+                        <p className="text-sm font-medium">{c.numero} — {c.tipoSeguro}</p>
+                        <p className="text-xs text-cyber-muted">{c.dataCriacao} · {c.seguradora || 'Sem seguradora'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={c.status} type="cotacao" />
+                        <FileText size={14} className="text-cyber-muted" />
+                      </div>
+                    </button>
+                  ))
+                }
               </div>
             )}
 
@@ -587,13 +681,17 @@ export default function Clientes() {
               <div className="space-y-2">
                 {apolicesCliente.length === 0 ? <EmptyState icon={<FileText size={24} />} title="Sem apólices" description="Este cliente não possui apólices vinculadas." /> :
                   apolicesCliente.map(a => (
-                    <div key={a.id} className="flex items-center justify-between p-3 border border-cyber-border/40 rounded-xl">
+                    <button key={a.id} onClick={() => navigate(`/apolices?focus=${a.id}`)}
+                      className="w-full flex items-center justify-between p-3 border border-cyber-border/40 rounded-xl hover:border-cyber-green/30 hover:bg-cyber-green/5 transition-colors text-left">
                       <div>
                         <p className="text-sm font-medium">{a.tipoSeguro} — {a.seguradora}</p>
                         <p className="text-xs text-cyber-muted">{a.numero} · Vence {a.fimVigencia}</p>
                       </div>
-                      <StatusBadge status={a.status} type="apolice" />
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={a.status} type="apolice" />
+                        <FileText size={14} className="text-cyber-muted" />
+                      </div>
+                    </button>
                   ))
                 }
               </div>
@@ -603,13 +701,17 @@ export default function Clientes() {
               <div className="space-y-2">
                 {propostasCliente.length === 0 ? <EmptyState icon={<ClipboardList size={24} />} title="Sem propostas" description="Nenhuma proposta vinculada." /> :
                   propostasCliente.map(p => (
-                    <div key={p.id} className="flex items-center justify-between p-3 border border-cyber-border/40 rounded-xl">
+                    <button key={p.id} onClick={() => navigate(`/propostas?focus=${p.id}`)}
+                      className="w-full flex items-center justify-between p-3 border border-cyber-border/40 rounded-xl hover:border-cyber-purple/30 hover:bg-cyber-purple/5 transition-colors text-left">
                       <div>
-                        <p className="text-sm font-medium">{p.tipoSeguro}</p>
+                        <p className="text-sm font-medium">{p.numero || p.tipoSeguro} — {p.tipoSeguro}</p>
                         <p className="text-xs text-cyber-muted">Solicitado em {p.dataSolicitacao}</p>
                       </div>
-                      <StatusBadge status={p.status} type="proposta" />
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={p.status} type="proposta" />
+                        <ClipboardList size={14} className="text-cyber-muted" />
+                      </div>
+                    </button>
                   ))
                 }
               </div>
@@ -656,11 +758,21 @@ export default function Clientes() {
                           {d.dataEnvio && <p className="text-xs text-cyber-muted mt-0.5">Enviado em {d.dataEnvio}</p>}
                           {d.observacoes && <p className="text-xs text-cyber-amber mt-1">{d.observacoes}</p>}
                         </div>
-                        <div className="shrink-0">
+                        <div className="shrink-0 flex flex-col items-end gap-1.5">
                           {d.status === 'aprovado' && <span className="flex items-center gap-1 text-xs text-cyber-green font-medium"><CheckCircle size={12} /> Aprovado</span>}
                           {d.status === 'pendente' && <span className="flex items-center gap-1 text-xs text-cyber-amber font-medium"><Clock size={12} /> Pendente</span>}
                           {d.status === 'enviado' && <span className="flex items-center gap-1 text-xs text-cyber-cyan font-medium"><FileText size={12} /> Enviado</span>}
                           {d.status === 'rejeitado' && <span className="flex items-center gap-1 text-xs text-cyber-red font-medium"><XCircle size={12} /> Rejeitado</span>}
+                          {['pendente', 'enviado'].includes(d.status) && (
+                            <div className="flex gap-1 mt-1">
+                              <button onClick={() => aprovarDocumento(d)} title="Aprovar" className="p-1 rounded-md text-cyber-green hover:bg-cyber-green/10 transition-colors">
+                                <ThumbsUp size={13} />
+                              </button>
+                              <button onClick={() => rejeitarDocumento(d)} title="Rejeitar" className="p-1 rounded-md text-cyber-red hover:bg-cyber-red/10 transition-colors">
+                                <ThumbsDown size={13} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

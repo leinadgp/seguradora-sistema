@@ -188,6 +188,8 @@ export default function Cotacoes() {
       const novaProposta = await createProposta({
         id, numero,
         quote_id: cot.id, cotacaoNumero: cot.numero,
+        clienteId: cot.clienteId || '',
+        lead_id: cot.lead_id || '',
         cliente: cot.cliente, cpfCnpj: cot.cpfCnpj || '',
         telefone: cot.telefone || '', whatsapp: cot.whatsapp || '', email: cot.email || '',
         tipoSeguro: cot.tipoSeguro, ramo: cot.ramo || '', subcategorias: cot.subcategorias || [], coberturas: cot.coberturas || [],
