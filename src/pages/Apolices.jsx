@@ -24,8 +24,10 @@ const formasCobrancaSgcor = ['Boleto', 'Cartão de Crédito', 'Débito em Conta'
 const ABAS_FORM = ['Dados Principais', 'Dados do Seguro', 'Coberturas', 'Financeiro', 'Observações', 'Anexos']
 
 const emptyForm = {
-  clienteId: '', cliente: '', tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
-  seguradoraId: '', seguradora: '', numero: '', numeroProposta: '',
+  clienteId: '', cliente: '', cpfCnpj: '', telefone: '', whatsapp: '', email: '',
+  tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
+  seguradoraId: '', seguradora: '', produto: '', numero: '', numeroProposta: '',
+  corretora: '', corretoraId: '', produtor: '', produtorId: '',
   corretor: 'Carlos Silva', status: 'ativa', dataEmissao: '', inicioVigencia: '', fimVigencia: '', dataRenovacao: '', canal: 'Corretor',
   premioBruto: '', premioLiquido: '', formaPagamento: 'Boleto', parcelas: '12', valorParcela: '', vencimentoPrimeiraParcela: '',
   diaVencimento: '1', comissaoPercentual: '15', comissaoValor: '', statusComissao: 'prevista',
@@ -77,6 +79,8 @@ export default function Apolices() {
   const fileInputRef = useRef(null)
   const { data: clientes } = useResource('clientes')
   const { data: seguradoras } = useResource('seguradoras')
+  const { data: corretoras } = useResource('corretoras')
+  const { data: produtores } = useResource('produtores')
   const { data: cotacoes } = useResource('cotacoes')
   const { data: propostas } = useResource('propostas')
   const { data: endossos } = useResource('endossos')
@@ -493,9 +497,32 @@ export default function Apolices() {
               })()}
               <div>
                 <label className="hud-label mb-1">Seguradora</label>
-                <select value={form.seguradoraId} onChange={e => { const s = seguradoras.find(s => s.id === e.target.value); setForm(f => ({ ...f, seguradoraId: e.target.value, seguradora: s?.nome || '' })) }} className={inputCls}>
+                <select value={form.seguradoraId} onChange={e => {
+                  const s = seguradoras.find(s => s.id === e.target.value)
+                  setForm(f => ({
+                    ...f, seguradoraId: e.target.value, seguradora: s?.nome || '',
+                    comissaoPercentual: s?.comissaoMedia ? String(s.comissaoMedia) : f.comissaoPercentual,
+                  }))
+                }} className={inputCls}>
                   <option value="">Selecione...</option>
-                  {seguradoras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                  {seguradoras.filter(s => s.status !== 'inativa').map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Produto / Plano</label>
+                <select value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls}>
+                  <option value="">Selecione o subtipo...</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Produtor / Agente</label>
+                <select value={form.produtorId} onChange={e => {
+                  const p = produtores.find(p => p.id === e.target.value)
+                  setForm(f => ({ ...f, produtorId: e.target.value, produtor: p?.nome || '' }))
+                }} className={inputCls}>
+                  <option value="">Selecione o produtor...</option>
+                  {produtores.filter(p => p.status !== 'inativo').map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
               <div><label className="hud-label mb-1">Número da apólice</label><input value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} className={inputCls} placeholder="AP-2024-0000" /></div>

@@ -117,10 +117,13 @@ export default function Leads() {
           status: 'nova',
           dataCriacao: todayISO(),
           observacoes: lead.observacoes || '',
+          origem: lead.origem || '',
+          temperatura: lead.temperatura || '',
           anexos: [],
           converted_proposal_id: null,
-          cpfCnpj: '', seguradora: '', produto: '',
-          premio: '', percentualComissao: '15', comissao: '',
+          cpfCnpj: '', seguradora: '', seguradoraId: '', produto: '',
+          corretora: '', corretoraId: '', produtor: '', produtorId: '',
+          premio: '', percentualComissaoTotal: '', percentualComissaoAttenti: '75', comissao: '',
         })
         await update(id, { ...lead, status: novoStatus, cotacao_id: cotId })
         showToast(`Cotação ${numero} criada automaticamente para ${lead.nome}!`)

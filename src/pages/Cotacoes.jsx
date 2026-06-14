@@ -18,9 +18,10 @@ import {
 import { useCatalogo } from '../hooks/useCatalogo'
 
 const emptyForm = {
-  cliente: '', cpfCnpj: '', telefone: '', email: '',
+  cliente: '', cpfCnpj: '', telefone: '', whatsapp: '', email: '',
   tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
-  seguradora: 'Porto Seguro', produto: '',
+  seguradora: '', seguradoraId: '', produto: '',
+  corretora: '', corretoraId: '', produtor: '', produtorId: '',
   valorEstimado: '', premioLiquido: '', premioBruto: '',
   percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
   coCorretagem: false, comissao: '',
@@ -38,6 +39,8 @@ export default function Cotacoes() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: cotacoes, create, update, remove } = useResource('cotacoes')
   const { data: seguradoras } = useResource('seguradoras')
+  const { data: corretoras } = useResource('corretoras')
+  const { data: produtores } = useResource('produtores')
   const { data: usuarios } = useResource('usuarios')
   const { data: propostas, create: createProposta } = useResource('propostas')
   const { data: apolices } = useResource('apolices')
@@ -166,12 +169,20 @@ export default function Cotacoes() {
       const novaProposta = await createProposta({
         id, numero,
         quote_id: cot.id, cotacaoNumero: cot.numero,
-        cliente: cot.cliente, cpfCnpj: cot.cpfCnpj, telefone: cot.telefone, email: cot.email,
+        cliente: cot.cliente, cpfCnpj: cot.cpfCnpj || '',
+        telefone: cot.telefone || '', whatsapp: cot.whatsapp || '', email: cot.email || '',
         tipoSeguro: cot.tipoSeguro, ramo: cot.ramo || '', subcategorias: cot.subcategorias || [], coberturas: cot.coberturas || [],
-        seguradora: cot.seguradora, produto: cot.produto,
+        seguradora: cot.seguradora, seguradoraId: cot.seguradoraId || '', produto: cot.produto,
+        corretora: cot.corretora || '', corretoraId: cot.corretoraId || '',
+        produtor: cot.produtor || '', produtorId: cot.produtorId || '',
         seguradorasCotadas: cot.seguradora ? [cot.seguradora] : [],
         premio: cot.premioLiquido || cot.premioBruto || cot.premio, melhorValor: cot.premioLiquido || cot.premioBruto || cot.premio, valorApresentado: cot.premioLiquido || cot.premioBruto || cot.premio,
-        comissao: cot.comissao, percentualComissao: cot.percentualComissao,
+        comissao: cot.comissao,
+        percentualComissao: cot.percentualComissaoTotal || cot.percentualComissaoAttenti || cot.percentualComissao || '',
+        percentualComissaoTotal: cot.percentualComissaoTotal || '',
+        percentualComissaoAttenti: cot.percentualComissaoAttenti || '',
+        percentualComissaoMega: cot.percentualComissaoMega || '',
+        coCorretagem: cot.coCorretagem || false,
         responsavel: cot.responsavel,
         status: 'em_analise', statusFlow: 'rascunho',
         dataSolicitacao: todayISO(), dataCriacao: todayISO(), dataEnvio: '', dataAprovacao: '',
@@ -373,6 +384,7 @@ export default function Cotacoes() {
               <FF label="Nome do cliente *" span><input value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} className={inputCls} /></FF>
               <FF label="CPF/CNPJ"><input value={form.cpfCnpj} onChange={e => setForm(f => ({ ...f, cpfCnpj: e.target.value }))} className={inputCls} /></FF>
               <FF label="Telefone"><input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} className={inputCls} placeholder="(00) 00000-0000" /></FF>
+              <FF label="WhatsApp"><input value={form.whatsapp} onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))} className={inputCls} placeholder="(00) 00000-0000" /></FF>
               <FF label="E-mail" span><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} /></FF>
             </div>
           </Section>
@@ -440,8 +452,57 @@ export default function Cotacoes() {
                   </FF>
                 )
               })()}
-              <FF label="Seguradora"><select value={form.seguradora} onChange={e => setForm(f => ({ ...f, seguradora: e.target.value }))} className={inputCls}><option value="">Selecione...</option>{seguradoras.map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}</select></FF>
-              <FF label="Produto"><input value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls} placeholder="Ex: Seguro Auto" /></FF>
+              <FF label="Seguradora">
+                <select value={form.seguradoraId} onChange={e => {
+                  const seg = seguradoras.find(s => s.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    seguradoraId: e.target.value,
+                    seguradora: seg?.nome || '',
+                    percentualComissaoTotal: seg?.comissaoMedia ? String(seg.comissaoMedia) : f.percentualComissaoTotal,
+                  }))
+                }} className={inputCls}>
+                  <option value="">Selecione a seguradora...</option>
+                  {seguradoras.filter(s => s.status !== 'inativa').map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </FF>
+              <FF label="Produto / Plano">
+                <select value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls}>
+                  <option value="">Selecione o subtipo...</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                </select>
+              </FF>
+              <FF label="Corretora (co-corretagem)">
+                <select value={form.corretoraId} onChange={e => {
+                  const cor = corretoras.find(c => c.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    corretoraId: e.target.value,
+                    corretora: cor?.nome || '',
+                    coCorretagem: !!cor,
+                    percentualComissaoMega: cor?.percentualCocorretagem ? String(cor.percentualCocorretagem) : f.percentualComissaoMega,
+                    percentualComissaoAttenti: cor?.percentualCocorretagem
+                      ? String(100 - Number(cor.percentualCocorretagem))
+                      : f.percentualComissaoAttenti,
+                  }))
+                }} className={inputCls}>
+                  <option value="">Sem co-corretagem</option>
+                  {corretoras.filter(c => c.status !== 'inativa').map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </FF>
+              <FF label="Produtor / Corretor">
+                <select value={form.produtorId} onChange={e => {
+                  const prod = produtores.find(p => p.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    produtorId: e.target.value,
+                    produtor: prod?.nome || '',
+                  }))
+                }} className={inputCls}>
+                  <option value="">Selecione o produtor...</option>
+                  {produtores.filter(p => p.status !== 'inativo').map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </FF>
             </div>
           </Section>
           <Section title="Valores">
