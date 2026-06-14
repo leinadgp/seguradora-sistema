@@ -117,11 +117,16 @@ export default function Clientes() {
 
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome do cliente.', 'error'); return }
-    // Trava cadastro com CNPJ duplicado
+    // Trava cadastro com CNPJ/CPF duplicado (manual seção 2.1 — verificar duplicidade antes de criar)
     if (form.tipo === 'PJ' && form.cnpj && onlyDigits(form.cnpj).length > 0) {
       const cnpjAtual = onlyDigits(form.cnpj)
       const duplicado = clientes.find(c => onlyDigits(c.cnpj) === cnpjAtual && c.id !== selected?.id)
       if (duplicado) { showToast(`Já existe um cliente com este CNPJ: ${duplicado.nome}.`, 'error'); return }
+    }
+    if (form.tipo === 'PF' && form.cpf && onlyDigits(form.cpf).length > 0) {
+      const cpfAtual = onlyDigits(form.cpf)
+      const duplicado = clientes.find(c => onlyDigits(c.cpf) === cpfAtual && c.id !== selected?.id)
+      if (duplicado) { showToast(`Já existe um cliente com este CPF: ${duplicado.nome}.`, 'error'); return }
     }
     if (form.tipo === 'PF' && form.cpf && !validarCPF(form.cpf)) { showToast('CPF inválido.', 'error'); return }
     if (form.tipo === 'PJ' && form.cnpj && !validarCNPJ(form.cnpj)) { showToast('CNPJ inválido.', 'error'); return }
