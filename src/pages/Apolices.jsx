@@ -86,6 +86,7 @@ export default function Apolices() {
   const { data: propostas } = useResource('propostas')
   const { data: endossos } = useResource('endossos')
   const { data: historico } = useResource('historico')
+  const { data: configs } = useResource('configuracoes')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
   const [filterTipo, setFilterTipo] = useState('Todos')
@@ -102,6 +103,15 @@ export default function Apolices() {
   useEffect(() => { setPage(1) }, [search, filterStatus, filterTipo, filterVenc])
   const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo } = useCatalogo()
   const [expandCobs, setExpandCobs] = useState(false)
+
+  function comissaoDaConfig(tipoSeguro) {
+    const cfg = configs?.find(c => c.id === 'config')
+    if (!cfg?.comissoes) return ''
+    const t = (tipoSeguro || '').toLowerCase()
+    const map = [['auto', 'auto'], ['automóvel', 'auto'], ['residencial', 'residencial'], ['empresarial', 'empresarial'], ['comercial', 'empresarial'], ['vida', 'vida'], ['saúde', 'saude'], ['odontológico', 'saude'], ['frota', 'frota'], ['rural', 'rural'], ['civil', 'rc'], ['viagem', 'viagem']]
+    for (const [k, v] of map) { if (t.includes(k)) return String(cfg.comissoes[v] ?? '') }
+    return ''
+  }
   const [previewAnexo, setPreviewAnexo] = useState(null)
 
   const filtered = apolices.filter(a => {
@@ -518,7 +528,17 @@ export default function Apolices() {
               </div>
               <div>
                 <label className="hud-label mb-1">Tipo de Seguro *</label>
-                <select value={form.tipoSeguro} onChange={e => { setExpandCobs(false); setForm(f => ({ ...f, tipoSeguro: e.target.value, subcategorias: [], coberturas: [], ramo: getRamo(e.target.value) })) }} className={inputCls}>
+                <select value={form.tipoSeguro} onChange={e => {
+                  const tipo = e.target.value
+                  setExpandCobs(false)
+                  setForm(f => {
+                    const cfgComissao = comissaoDaConfig(tipo)
+                    return {
+                      ...f, tipoSeguro: tipo, subcategorias: [], coberturas: [], ramo: getRamo(tipo),
+                      comissaoPercentual: f.seguradoraId ? f.comissaoPercentual : (cfgComissao || f.comissaoPercentual),
+                    }
+                  })
+                }} className={inputCls}>
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
