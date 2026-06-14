@@ -7,8 +7,7 @@ import { StatusBadge } from '../components/ui/Badge'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { validarCNPJ, validarEmail } from '../lib/validators'
-
-const segmentos = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida', 'Saúde', 'Frota', 'Rural', 'RC', 'Garantia', 'Engenharia', 'Odontológico', 'Viagem']
+import useCatalogo from '../hooks/useCatalogo'
 
 const emptyForm = { nome: '', cnpj: '', segmentos: [], gerente: '', telefoneGerente: '', emailGerente: '', linkPortal: '', comissaoMedia: '', prazoEmissao: '', prazoPagamento: '', status: 'ativa', instrucoesApolice: '', instrucoesBoleto: '', observacoes: '' }
 
@@ -17,6 +16,8 @@ function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency'
 export default function Seguradoras() {
   const { showToast } = useApp()
   const { data: seguradoras, create, update, remove } = useResource('seguradoras')
+  const { getTipos } = useCatalogo()
+  const segmentos = getTipos(null)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDetalhes, setShowDetalhes] = useState(false)
