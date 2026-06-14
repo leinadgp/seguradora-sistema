@@ -109,6 +109,17 @@ export default function Dashboard() {
           link: '/renovacoes',
         })
       }
+      // Seguro Judicial PGFN: renovar/substituir até 60 dias antes (Portaria PGF Nº 41/2022)
+      const isJudicial = /judicial/i.test(a.tipoSeguro || '')
+      if (isJudicial && !isNaN(dias) && dias > 30 && dias <= 60) {
+        lista.push({
+          id: `judicial_60d_${a.id}`,
+          tipo: 'renovacao',
+          urgencia: 'alta',
+          mensagem: `⚠ Judicial PGFN: ${a.cliente} vence em ${dias}d — renovar/substituir até 60 dias antes`,
+          link: '/renovacoes',
+        })
+      }
     })
 
     // Tarefas atrasadas (status = atrasada OU data anterior a hoje)
