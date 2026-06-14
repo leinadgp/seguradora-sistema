@@ -29,6 +29,403 @@ const emptyForm = {
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
 }
 
+const _CABEC = `ENTRADA: DD/MM/202X – NOME DO CLIENTE POR (WHATSAPP OU EMAIL)
+PROT VENDA: DD/MM/202X
+PRODUTOR DO CLIENTE:
+PRODUTOR DE REPASSE:`
+
+const _COT_GAR = `--- COTAÇÃO ---
+DD/MM/202X - SUBSCRITOR OU EMISSOR: [nome] - MINUTA [SEGURADORA]: [nome]
+COMISSÃO TOTAL %
+COM CO-CORRETAGEM ATTENTI %
+GRUPO MEGA %
+PRÊMIO: R$`
+
+const _COT_STD = `--- COTAÇÃO ---
+DD/MM/202X - SUBSCRITOR OU EMISSOR: [nome]
+COMISSÃO TOTAL %
+COMISSÃO ATTENTI %
+PRÊMIO LÍQUIDO: R$
+PRÊMIO BRUTO: R$`
+
+const TEMPLATES_OBS = {
+  'Seguro Garantia': [
+    { label: 'Nova', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+CONTRATO:
+PROCESSO:
+EDITAL:
+OBJETO DO CONTRATO/PEDIDO:
+VALOR ESTIMADO DO CONTRATO: R$
+VALOR DO CONTRATO: R$
+IS (5%) DO CONTRATO: R$
+VIGÊNCIA DO CONTRATO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+CLÁUSULA SOBRE GARANTIA NO CONTRATO:
+NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_GAR}` },
+    { label: 'Endosso', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+TIPO DE ENDOSSO:
+SEGURADORA DA APÓLICE A SER ENDOSSADA:
+Nº APÓLICE A SER ENDOSSADA:
+CONTRATO:
+PROCESSO:
+EDITAL:
+TERMO ADITIVO:
+DESCRIÇÃO DA DEMANDA:
+OBJETO DO CONTRATO/PEDIDO:
+VIGÊNCIA DO TERMO ADITIVO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+CLÁUSULA SOBRE GARANTIA / NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_GAR}` },
+  ],
+  'Seguro Licitante': [
+    { label: 'Nova', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+PROCESSO:
+EDITAL:
+OBJETO:
+VALOR ESTIMADO CONTRATO: R$
+IS (%): R$
+VIGÊNCIA DA PROPOSTA: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+CLÁUSULA SOBRE GARANTIA NO EDITAL / NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_GAR}` },
+  ],
+  'Fiança Locatícia': [
+    { label: 'Nova', text: `${_CABEC}
+IMOBILIÁRIA:
+CNPJ IMOBILIÁRIA:
+ENDEREÇO DO RISCO:
+COBERTURAS:
+  ALUGUEL: R$
+  IPTU: R$
+  ÁGUA: R$
+  LUZ: R$
+  CONDOMÍNIO: R$
+  GÁS: R$
+  DANOS AO IMÓVEL: R$
+  MULTA POR RESCISÃO: R$
+  PINTURA INTERNA OU EXTERNA: R$
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+NÚMERO CLÁUSULA / NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_GAR}` },
+    { label: 'Endosso / Renovação', text: `${_CABEC}
+TIPO DE ENDOSSO:
+SEGURADORA DA APÓLICE A SER ENDOSSADA:
+Nº APÓLICE A SER ENDOSSADA:
+IMOBILIÁRIA:
+CNPJ IMOBILIÁRIA:
+ENDEREÇO DO RISCO:
+COBERTURAS: (mesmas da nova)
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_GAR}` },
+  ],
+  'Capitalização Aluguel': [
+    { label: 'Nova', text: `${_CABEC}
+ENDEREÇO DO RISCO:
+VALOR ALUGUEL MENSAL: R$
+VALOR DO TÍTULO: R$
+IMOBILIÁRIA ESTIPULANTE:
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- PROPOSTA ---
+DD/MM/202X - PROPOSTA [SEGURADORA]: [nome]
+COMISSÃO TOTAL %
+COMISSÃO ATTENTI %
+PRÊMIO: R$` },
+    { label: 'Renovação', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA:
+Nº TÍTULO A SER RENOVADO:
+VALOR DO TÍTULO A SER RENOVADO: R$
+ENDEREÇO DO RISCO:
+VALOR ALUGUEL MENSAL: R$
+VALOR DO TÍTULO: R$
+VIGÊNCIA DO CONTRATO DE LOCAÇÃO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- PROPOSTA ---
+COMISSÃO TOTAL %  COMISSÃO ATTENTI %  PRÊMIO: R$` },
+  ],
+  'Seguro Judicial': [
+    { label: 'Nova (Execução Fiscal/Civil/Tributária)', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+NÚMERO DO PROCESSO:
+CDA:
+TIPO DE AÇÃO:
+TRIBUNAL:
+VARA:
+VALOR DA IS + 30%: R$
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_GAR}` },
+    { label: 'Nova (Trabalhista)', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+NÚMERO DO PROCESSO:
+CDA:
+TIPO DE AÇÃO: TRABALHISTA
+TRIBUNAL:
+VARA:
+VALOR DA IS + 30%: R$
+ENDEREÇO DO RECLAMANTE:
+NÚMERO IDENTIDADE DO RECLAMANTE:
+TELEFONE DO RECLAMANTE:
+EMAIL DO RECLAMANTE:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_GAR}` },
+    { label: 'Nova (Depósito Recursal)', text: `${_CABEC}
+RAZÃO SOCIAL DO SEGURADO / CPF OU CNPJ:
+NÚMERO DO PROCESSO:
+TIPO DE RECURSO:
+TRIBUNAL:
+VARA:
+VALOR DA IS + 30%: R$
+ENDEREÇO DO RECLAMANTE:
+NÚMERO IDENTIDADE DO RECLAMANTE:
+TELEFONE DO RECLAMANTE:
+EMAIL DO RECLAMANTE:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_GAR}` },
+  ],
+  'Risco Engenharia': [
+    { label: 'Nova', text: `${_CABEC}
+BENEFICIÁRIO / CPF OU CNPJ:
+CONTRATO:
+PROCESSO:
+EDITAL:
+OBJETO:
+ENDEREÇO DO RISCO:
+VALOR CONTRATO: R$
+LMI: R$
+VIGÊNCIA DO CONTRATO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+NÚMERO CLÁUSULA SOBRE O SEGURO / NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_GAR}` },
+    { label: 'Endosso', text: `${_CABEC}
+BENEFICIÁRIO / CPF OU CNPJ:
+TIPO DE ENDOSSO:
+SEGURADORA DA APÓLICE A SER ENDOSSADA:
+Nº APÓLICE A SER ENDOSSADA:
+CONTRATO:
+TERMO ADITIVO: (se houver)
+OBJETO:
+ENDEREÇO DO RISCO:
+VALOR CONTRATO: R$
+LMI: R$
+VIGÊNCIA DO CONTRATO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_GAR}` },
+  ],
+  'Responsabilidade Civil': [
+    { label: 'Nova (Obras / Vinculado)', text: `${_CABEC}
+BENEFICIÁRIO / CPF OU CNPJ:
+CONTRATO:
+PROCESSO:
+EDITAL:
+OBJETO:
+ENDEREÇO DO RISCO:
+VALOR CONTRATO: R$
+LMI: R$
+VIGÊNCIA DO CONTRATO: DD/MM/202X A DD/MM/202X
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+NÚMERO CLÁUSULA / NÚMERO DA PÁGINA:
+CONDIÇÕES PARTICULARES:
+${_COT_STD}` },
+    { label: 'Nova (Profissional / Geral)', text: `${_CABEC}
+BENEFICIÁRIO / CPF OU CNPJ:
+OBJETO:
+ENDEREÇO DO RISCO:
+LMI: R$
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Auto': [
+    { label: 'Nova', text: `${_CABEC}
+CARRO ZERO: ( ) SIM ( ) NÃO
+VEÍCULO:       PLACA:       ANO:
+CHASSI:        RENAVAM:     COR:        COMBUSTÍVEL:
+CONDUTOR PRINCIPAL NOME/CPF:
+ENDEREÇO PERNOITE:
+COBERTURAS E VALORES:
+  DANOS MATERIAIS: R$   DANOS CORPORAIS: R$   DANOS MORAIS: R$   APP MORTE/INVALIDEZ: R$
+  ASSISTÊNCIA: ( ) Básica ( ) Intermediária ( ) Completa
+  VIDROS: ( ) Básico ( ) Completo
+  PEQUENOS REPAROS: ( ) Sim ( ) Não
+  CARRO RESERVA: ( ) 7 dias ( ) 15 dias ( ) 30 dias ( ) Não
+  AR CONDICIONADO: ( ) Sim ( ) Não
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+CARRO ZERO: ( ) SIM ( ) NÃO
+VEÍCULO:       PLACA:       ANO:
+CHASSI:        RENAVAM:     COR:        COMBUSTÍVEL:
+CONDUTOR PRINCIPAL NOME/CPF:
+ENDEREÇO PERNOITE:
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE A SER RENOVADA OU ENDOSSADA:
+CI:
+BÔNUS DA RENOVAÇÃO:
+VALOR PAGO ANTERIORMENTE: R$
+COBERTURAS E VALORES: (manter ou alterar?)
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Frota': [
+    { label: 'Nova', text: `${_CABEC}
+VEÍCULOS DA FROTA:
+  VEÍCULO:  PLACA:  ANO:  CHASSI:  RENAVAN:  COR:  COMBUSTÍVEL:
+  CONDUTOR PRINCIPAL NOME/CPF:  ENDEREÇO PERNOITE:
+(repetir por veículo)
+COBERTURAS E VALORES:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE A SER RENOVADA OU ENDOSSADA:
+VALOR PAGO ANTERIORMENTE: R$
+VEÍCULOS DA FROTA: (alterar ou manter?)
+COBERTURAS E VALORES:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Patrimoniais': [
+    { label: 'Nova', text: `${_CABEC}
+TEM BENEFICIÁRIO NO SEGURO? ( ) SIM ( ) NÃO
+SE SIM: NOME/RAZÃO SOCIAL E CPF/CNPJ:
+ENDEREÇO DO RISCO:
+VALOR DO IMÓVEL: R$
+COBERTURAS:
+  INCÊNDIO: R$   DANOS ELÉTRICOS: R$   EQUIPAMENTOS: R$
+  ALUGUEL: R$    VIDROS: R$             ROUBO E FURTO: R$
+  VENDAVAL: R$   VAZAMENTOS: R$         DANOS MORAIS: R$
+  ASSISTÊNCIA: ( ) Básica ( ) Completa
+ITEM NOVO: ( ) SIM ( ) NÃO
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:
+VALOR PAGO ANTERIORMENTE: R$
+ENDEREÇO DO RISCO:
+COBERTURAS: (manter ou alterar?)
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Equipamentos': [
+    { label: 'Novo', text: `${_CABEC}
+Nº DE EQUIPAMENTOS:
+RELACIONAR OS TIPOS DE EQUIPAMENTOS:
+DESCRIÇÃO DOS EQUIPAMENTOS:
+COBERTURAS E VALORES:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO TOTAL %  COMISSÃO ATTENTI %  PRÊMIO LÍQUIDO: R$` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:
+VALOR PAGO ANTERIORMENTE: R$
+EQUIPAMENTOS: (manter ou alterar?)
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Eventos': [
+    { label: 'Nova', text: `${_CABEC}
+NOME DO EVENTO:
+ENDEREÇO DO EVENTO:
+ORGANIZADOR:
+COBERTURAS E VALORES:
+PERÍODO DO EVENTO: DD/MM/202X A DD/MM/202X
+DATA MONTAGEM:    DATA DESMONTAGEM:
+${_COT_STD}` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:
+VALOR PAGO ANTERIORMENTE: R$
+NOME DO EVENTO:
+PERÍODO DO EVENTO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+  'Vida PF': [
+    { label: 'Nova', text: `${_CABEC}
+DATA DE NASCIMENTO:   IDADE:   ESTADO CIVIL:
+PROFISSÃO:   RENDA MENSAL: R$
+FUMANTE: ( ) SIM ( ) NÃO
+PRATICA ESPORTE: ( ) SIM ( ) NÃO — Qual?
+APOSENTADO: ( ) SIM ( ) NÃO
+COBERTURAS:
+  MORTE: R$         MORTE ACIDENTAL: R$
+  IPA: R$           IFPD: R$
+  DIT: R$           DIH: R$           DOENÇAS GRAVES: R$
+  ASSISTÊNCIA FUNERAL: R$
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %    COMISSÃO VITALÍCIA ATTENTI %
+COMISSÃO AGENCIAMENTO TOTAL % COMISSÃO AGENCIAMENTO ATTENTI %
+PRÊMIO: R$` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:   VALOR PAGO ANTERIORMENTE: R$
+COBERTURAS: (manter ou alterar?)
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %    COMISSÃO VITALÍCIA ATTENTI %
+COMISSÃO AGENCIAMENTO TOTAL % COMISSÃO AGENCIAMENTO ATTENTI %
+PRÊMIO: R$` },
+  ],
+  'Vida PJ': [
+    { label: 'Nova', text: `${_CABEC}
+Nº DE VIDAS COLABORADORES:   Nº DE VIDAS SÓCIOS:
+TIPO: GLOBAL ( )  PME ( )
+DE ACORDO COM CLT? ( ) SIM ( ) NÃO
+[Para cada vida:]
+  NOME COMPLETO / CPF / DATA DE NASCIMENTO / IDADE
+  AFASTADO? ( ) SIM ( ) NÃO — CID se afastado
+COBERTURAS:
+  MORTE: R$   MORTE ACIDENTAL: R$   IPA: R$   IFPD: R$   ASSISTÊNCIA FUNERAL: R$
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %    COMISSÃO VITALÍCIA ATTENTI %
+COMISSÃO AGENCIAMENTO TOTAL % COMISSÃO AGENCIAMENTO ATTENTI %
+PRÊMIO MENSAL: R$   PRÊMIO ANUAL: R$` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:   VALOR PAGO ANTERIORMENTE: R$
+COBERTURAS: (manter ou alterar?)
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO VITALÍCIA TOTAL %  COMISSÃO AGENCIAMENTO TOTAL %
+PRÊMIO MENSAL: R$  PRÊMIO ANUAL: R$` },
+  ],
+  'Consórcio': [
+    { label: 'Nova', text: `${_CABEC}
+TIPO DE CONSÓRCIO:
+VALOR DO CRÉDITO SOLICITADO CLIENTE: R$
+NÚMERO DE MESES:
+--- SIMULAÇÃO ---
+COMISSÃO TOTAL %   COMISSÃO ATTENTI %   PRÊMIO: R$` },
+  ],
+  'Diversos': [
+    { label: 'Novo', text: `${_CABEC}
+TIPO DE BEM SEGURADO:
+DESCRIÇÃO DO BEM SEGURADO:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+--- COTAÇÃO ---
+COMISSÃO TOTAL %   COMISSÃO ATTENTI %   PRÊMIO: R$` },
+    { label: 'Renovação / Endosso', text: `${_CABEC}
+SEGURADORA DA APÓLICE A SER RENOVADA OU ENDOSSADA:
+Nº APÓLICE:   VALOR PAGO ANTERIORMENTE: R$
+TIPO DE BEM SEGURADO:
+VIGÊNCIA DO SEGURO: DD/MM/202X A DD/MM/202X
+${_COT_STD}` },
+  ],
+}
+
 function StatusChip({ status }) {
   const s = cotacaoStatus[status] || { label: status, color: 'slate' }
   return <Badge color={s.color}>{s.label}</Badge>
@@ -76,14 +473,26 @@ export default function Cotacoes() {
     return ''
   }
 
+  // Participação ATTENTI na comissão por tipo (manual Seção 4)
+  function participacaoAttentiDefault(tipo) {
+    const t = (tipo || '').toLowerCase()
+    if (/garantia|licitante|judicial|fiança|capitaliz/.test(t)) return '80'
+    if (/patrimonial|risco engenh|responsabilidade|equipament/.test(t)) return '70'
+    return '75'
+  }
+
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
     const entrada = getEntrada(tipo)
-    if (!entrada) return formAtual
+    const attenti = entrada?.comissaoAttenti != null
+      ? String(entrada.comissaoAttenti)
+      : participacaoAttentiDefault(tipo)
     return {
       ...formAtual,
-      percentualComissaoAttenti: String(entrada.comissaoAttenti ?? ''),
-      coCorretagem: !!entrada.coCorretagem,
-      percentualComissaoMega: entrada.coCorretagem ? String(entrada.comissaoMega ?? 20) : '',
+      percentualComissaoAttenti: attenti,
+      coCorretagem: entrada?.coCorretagem !== undefined ? !!entrada.coCorretagem : formAtual.coCorretagem,
+      percentualComissaoMega: entrada?.coCorretagem
+        ? String(entrada.comissaoMega ?? (100 - Number(attenti)))
+        : formAtual.percentualComissaoMega,
     }
   }
 
@@ -623,7 +1032,33 @@ export default function Cotacoes() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FF label="Responsável"><select value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} className={inputCls}>{usuarios.map(u => <option key={u.id}>{u.nome}</option>)}</select></FF>
               <FF label="Status"><select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>{cotacaoStatusList.filter(s => s !== 'convertida').map(s => <option key={s} value={s}>{cotacaoStatus[s].label}</option>)}</select></FF>
-              <FF label="Observações" span><textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={3} className={inputCls + ' resize-none'} /></FF>
+              <div className="sm:col-span-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <label className="text-xs font-medium text-cyber-muted">Observações</label>
+                  {(TEMPLATES_OBS[form.tipoSeguro]?.length ?? 0) > 0 && (
+                    <select
+                      value=""
+                      onChange={e => {
+                        if (!e.target.value) return
+                        const tmpl = TEMPLATES_OBS[form.tipoSeguro]?.find(t => t.label === e.target.value)
+                        if (tmpl) setForm(f => ({ ...f, observacoes: tmpl.text }))
+                      }}
+                      className="text-xs border border-cyber-cyan/30 rounded-lg px-2 py-1 bg-cyber-cyan/5 text-cyber-cyan focus:outline-none cursor-pointer"
+                    >
+                      <option value="">📋 Template...</option>
+                      {TEMPLATES_OBS[form.tipoSeguro].map(t => (
+                        <option key={t.label} value={t.label}>{t.label}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <textarea
+                  value={form.observacoes}
+                  onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
+                  rows={5}
+                  className={inputCls + ' resize-y font-mono text-xs'}
+                />
+              </div>
             </div>
           </Section>
         </div>
