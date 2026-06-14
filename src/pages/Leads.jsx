@@ -36,6 +36,7 @@ export default function Leads() {
   const { data: leads, create, update, remove } = useResource('leads')
   const { data: usuarios } = useResource('usuarios')
   const { data: cotacoes, create: createCotacao } = useResource('cotacoes')
+  const { create: createCliente } = useResource('clientes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDetalhes, setShowDetalhes] = useState(false)
@@ -66,6 +67,44 @@ export default function Leads() {
   function openNew() { setForm(emptyForm); setIsEditing(false); setShowModal(true) }
   function openEdit(l) { setForm({ ...emptyForm, ...l }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
 
+  function buildClienteFromLead(leadId, leadData, clienteId) {
+    return {
+      id: clienteId,
+      tipo: 'PF',
+      nome: leadData.nome,
+      cpf: '',
+      cnpj: '',
+      email: leadData.email || '',
+      telefone: leadData.telefone || '',
+      whatsapp: leadData.whatsapp || '',
+      cidade: leadData.cidade || '',
+      estado: leadData.estado || 'SP',
+      lead_id: leadId,
+      origem: leadData.origem || '',
+      responsavel: leadData.responsavel || '',
+      status: 'prospect',
+      observacoes: leadData.observacoes || '',
+      dataCadastro: todayISO(),
+    }
+  }
+
+  async function handleConverterCliente(lead) {
+    if (lead.cliente_id) {
+      setShowDetalhes(false)
+      navigate('/clientes')
+      return
+    }
+    try {
+      const clienteId = Date.now().toString()
+      await createCliente(buildClienteFromLead(lead.id, lead, clienteId))
+      await update(lead.id, { ...lead, cliente_id: clienteId })
+      setSelected(prev => prev ? { ...prev, cliente_id: clienteId } : prev)
+      showToast(`Cliente "${lead.nome}" criado com sucesso!`)
+    } catch {
+      showToast('Erro ao criar cliente.', 'error')
+    }
+  }
+
   async function handleSave() {
     if (!form.nome) { showToast('Preencha o nome do lead.', 'error'); return }
     if (form.email && !validarEmail(form.email)) { showToast('E-mail inválido.', 'error'); return }
@@ -75,8 +114,13 @@ export default function Leads() {
         await update(selected.id, { ...selected, ...form })
         showToast('Lead atualizado!')
       } else {
-        await create({ ...form, id: Date.now().toString(), createdAt: new Date().toISOString().split('T')[0] })
-        showToast('Lead cadastrado!')
+        const leadId = Date.now().toString()
+        const novoLead = { ...form, id: leadId, createdAt: new Date().toISOString().split('T')[0] }
+        await create(novoLead)
+        const clienteId = String(parseInt(leadId) + 1)
+        await createCliente(buildClienteFromLead(leadId, form, clienteId))
+        await update(leadId, { ...novoLead, cliente_id: clienteId })
+        showToast(`Lead cadastrado e cliente "${form.nome}" criado automaticamente!`)
       }
       setShowModal(false)
     } catch {
@@ -117,9 +161,20 @@ export default function Leads() {
 
   async function executarMoverLead(lead, novoStatus) {
     try {
+      // Auto-criar cliente ao entrar em cotação se ainda não houver um vinculado
+      let leadAtual = lead
+      if (novoStatus === 'cotacao' && !lead.cliente_id) {
+        const clienteId = Date.now().toString()
+        await createCliente(buildClienteFromLead(lead.id, lead, clienteId))
+        await update(lead.id, { ...lead, cliente_id: clienteId })
+        leadAtual = { ...lead, cliente_id: clienteId }
+        setSelected(prev => prev ? { ...prev, cliente_id: clienteId } : prev)
+        showToast(`Cliente criado automaticamente para ${lead.nome}.`)
+      }
+
       if (novoStatus === 'cotacao') {
-        if (lead.cotacao_id) {
-          await update(lead.id, { ...lead, status: novoStatus })
+        if (leadAtual.cotacao_id) {
+          await update(leadAtual.id, { ...leadAtual, status: novoStatus })
           showToast('Lead movido para Em Cotação. Cotação já existente vinculada.')
           setSelected(prev => prev ? { ...prev, status: novoStatus } : prev)
           return
@@ -128,35 +183,35 @@ export default function Leads() {
         const cotId = Date.now().toString()
         await createCotacao({
           id: cotId, numero,
-          lead_id: lead.id,
-          cliente: lead.nome,
-          telefone: lead.telefone || '',
-          whatsapp: lead.whatsapp || '',
-          email: lead.email || '',
-          tipoSeguro: lead.tipoSeguro,
-          ramo: lead.ramo || '',
-          subcategorias: lead.subcategorias || [],
-          coberturas: lead.coberturas || [],
-          valorEstimado: lead.valorEstimado || '',
-          responsavel: lead.responsavel,
+          lead_id: leadAtual.id,
+          cliente: leadAtual.nome,
+          telefone: leadAtual.telefone || '',
+          whatsapp: leadAtual.whatsapp || '',
+          email: leadAtual.email || '',
+          tipoSeguro: leadAtual.tipoSeguro,
+          ramo: leadAtual.ramo || '',
+          subcategorias: leadAtual.subcategorias || [],
+          coberturas: leadAtual.coberturas || [],
+          valorEstimado: leadAtual.valorEstimado || '',
+          responsavel: leadAtual.responsavel,
           status: 'nova',
           dataCriacao: todayISO(),
-          observacoes: lead.observacoes || '',
-          origem: lead.origem || '',
-          temperatura: lead.temperatura || '',
+          observacoes: leadAtual.observacoes || '',
+          origem: leadAtual.origem || '',
+          temperatura: leadAtual.temperatura || '',
           anexos: [],
           converted_proposal_id: null,
           cpfCnpj: '', seguradora: '', seguradoraId: '', produto: '',
           corretora: '', corretoraId: '', produtor: '', produtorId: '',
           premio: '', percentualComissaoTotal: '', percentualComissaoAttenti: '75', comissao: '',
         })
-        await update(lead.id, { ...lead, status: novoStatus, cotacao_id: cotId })
-        showToast(`Cotação ${numero} criada automaticamente para ${lead.nome}!`)
+        await update(leadAtual.id, { ...leadAtual, status: novoStatus, cotacao_id: cotId })
+        showToast(`Cotação ${numero} criada automaticamente para ${leadAtual.nome}!`)
         setSelected(prev => prev ? { ...prev, status: novoStatus, cotacao_id: cotId } : prev)
         return
       }
 
-      await update(lead.id, { ...lead, status: novoStatus })
+      await update(leadAtual.id, { ...leadAtual, status: novoStatus })
       showToast('Status do lead atualizado!')
       setSelected(prev => prev ? { ...prev, status: novoStatus } : prev)
     } catch {
@@ -276,11 +331,18 @@ export default function Leads() {
                       )}
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-xs text-cyber-muted">Resp: {l.responsavel?.split(' ')[0]}</p>
-                        {l.cotacao_id && (
-                          <span className="text-[10px] text-cyber-amber bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                            📋 Cotação
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {l.cliente_id && (
+                            <span className="text-[10px] text-cyber-green bg-cyber-green/10 px-1.5 py-0.5 rounded font-medium">
+                              👤 Cliente
+                            </span>
+                          )}
+                          {l.cotacao_id && (
+                            <span className="text-[10px] text-cyber-amber bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium">
+                              📋 Cotação
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -355,7 +417,9 @@ export default function Leads() {
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => openEdit(selected)}>Editar</Button>
               <Button variant="danger" onClick={() => { setShowDetalhes(false); setConfirmDelete(selected) }}>Excluir</Button>
-              <Button variant="success" icon={<User size={14} />} onClick={() => { showToast(`Lead "${selected.nome}" convertido em cliente!`); setShowDetalhes(false) }}>Converter em Cliente</Button>
+              <Button variant="success" icon={<User size={14} />} onClick={() => handleConverterCliente(selected)}>
+                {selected?.cliente_id ? 'Ver Cliente' : 'Converter em Cliente'}
+              </Button>
             </div>
           </div>
         }
@@ -386,7 +450,15 @@ export default function Leads() {
                 <p className="text-sm text-cyber-text/80">{selected.observacoes}</p>
               </div>
             )}
-            {/* Link para cotação vinculada */}
+            {/* Links para entidades vinculadas */}
+            {selected.cliente_id && (
+              <button
+                onClick={() => { setShowDetalhes(false); navigate('/clientes') }}
+                className="w-full flex items-center gap-2 text-sm text-cyber-green font-medium bg-cyber-green/5 border border-cyber-green/20 rounded-xl px-3 py-2.5 hover:bg-cyber-green/10 transition-colors"
+              >
+                <User size={14} /> Ver cliente vinculado →
+              </button>
+            )}
             {selected.cotacao_id && (
               <button
                 onClick={() => { setShowDetalhes(false); navigate(`/cotacoes?focus=${selected.cotacao_id}`) }}
