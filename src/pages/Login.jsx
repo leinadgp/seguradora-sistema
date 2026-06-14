@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Zap, Eye, EyeOff } from 'lucide-react'
+import { Zap, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -30,14 +30,12 @@ export default function Login() {
     <div className="min-h-screen bg-cyber-bg flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 glow-cyan"
-            style={{ background: 'linear-gradient(135deg, #0891b2 0%, #7c3aed 100%)' }}
-          >
-            <Shield size={26} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-display font-bold text-cyber-text">SeguroControl</h1>
-          <p className="text-sm text-cyber-muted mt-1">Sistema de Gestão de Seguros</p>
+          <img
+            src="/attenti-logo.png"
+            alt="Attenti Corretora de Seguros"
+            className="h-28 w-auto object-contain mx-auto mb-3"
+          />
+          <p className="text-sm text-cyber-muted">Sistema de Gestão de Seguros</p>
         </div>
 
         <div className="glass rounded-2xl p-6">
@@ -103,7 +101,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-cyber-dim mt-6">
-          © {new Date().getFullYear()} SeguroControl · Todos os direitos reservados
+          © {new Date().getFullYear()} Attenti Corretora de Seguros · Todos os direitos reservados
         </p>
       </div>
     </div>
