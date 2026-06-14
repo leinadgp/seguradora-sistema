@@ -53,6 +53,7 @@ const DEFAULT_COMISSOES = {
   auto: 15, residencial: 14, empresarial: 16,
   vida: 12, saude: 12, frota: 13,
   rural: 10, rc: 14, viagem: 10,
+  consorcio: 1.5, // fixo manual seção 4
 }
 
 export default function Configuracoes() {
@@ -293,7 +294,7 @@ export default function Configuracoes() {
               <h3 className="font-semibold text-cyber-text mb-1">Comissão padrão por tipo</h3>
               <p className="text-xs text-cyber-muted mb-3">Usada como fallback quando a seguradora não tem comissão média configurada.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[['auto','Auto'], ['residencial','Residencial'], ['empresarial','Empresarial'], ['vida','Vida'], ['saude','Saúde'], ['frota','Frota'], ['rural','Rural'], ['rc','Resp. Civil'], ['viagem','Viagem']].map(([k, l]) => (
+                {[['auto','Auto'], ['residencial','Residencial'], ['empresarial','Empresarial'], ['vida','Vida'], ['saude','Saúde'], ['frota','Frota'], ['rural','Rural'], ['rc','Resp. Civil'], ['viagem','Viagem'], ['consorcio','Consórcio']].map(([k, l]) => (
                   <div key={k}>
                     <label className="hud-label mb-1">{l} (%)</label>
                     <input type="number" step="0.1" value={comissoes[k] ?? ''} onChange={e => setComissoes(c => ({ ...c, [k]: Number(e.target.value) }))} className={inputCls} />
