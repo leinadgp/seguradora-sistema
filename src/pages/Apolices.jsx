@@ -75,6 +75,7 @@ export default function Apolices() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: apolices, create, update, remove } = useResource('apolices')
+  const { create: createComissao } = useResource('comissoes')
   const { data: usuarios } = useResource('usuarios')
   const fileInputRef = useRef(null)
   const { data: clientes } = useResource('clientes')
@@ -192,8 +193,30 @@ export default function Apolices() {
         await update(selected.id, { ...selected, ...form })
         showToast('Apólice atualizada com sucesso!')
       } else {
-        await create({ ...form, id: Date.now().toString(), diasParaVencer: 365, dataEmissao: new Date().toISOString().split('T')[0] })
+        const novoId = Date.now().toString()
+        await create({ ...form, id: novoId, diasParaVencer: 365, dataEmissao: new Date().toISOString().split('T')[0] })
         showToast('Apólice cadastrada com sucesso!')
+        // Auto-gerar comissão se apólice ativa com percentual definido
+        const premio = parseFloat(form.premioLiquido || form.premioBruto || 0)
+        const taxa = parseFloat(form.comissaoPercentual || 0)
+        if (['ativa', 'emitida'].includes(form.status) && premio > 0 && taxa > 0) {
+          await createComissao({
+            id: `com_${Date.now()}`,
+            clienteId: form.clienteId || '',
+            cliente: form.cliente || '',
+            apoliceId: novoId,
+            apolice: form.numero || '',
+            seguradora: form.seguradora || '',
+            corretor: form.corretor || '',
+            tipoSeguro: form.tipoSeguro || '',
+            valorPremio: premio,
+            percentual: taxa,
+            valor: parseFloat((premio * taxa / 100).toFixed(2)),
+            status: form.statusComissao || 'prevista',
+            dataPrevista: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+          })
+        }
       }
       setShowModal(false)
     } catch {

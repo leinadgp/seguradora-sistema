@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo } from 'react'
-import { Search, RefreshCw, CheckCircle, XCircle, Phone } from 'lucide-react'
+import { Search, RefreshCw, CheckCircle, XCircle, Phone, FileText } from 'lucide-react'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
@@ -19,6 +19,7 @@ function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency'
 export default function Renovacoes() {
   const { showToast } = useApp()
   const { data: apolices, update } = useResource('apolices')
+  const { create: createCotacao } = useResource('cotacoes')
   const renovacoes = useMemo(() =>
     apolices
       .filter(a => a.status === 'ativa' || a.status === 'em_renovacao')
@@ -37,6 +38,29 @@ export default function Renovacoes() {
     const matchStatus = filterStatus === 'Todos' || r.statusRenovacao === filterStatus
     return match && matchDias && matchStatus
   })
+
+  async function gerarCotacaoRenovacao(apolice) {
+    try {
+      const cotId = `cot_${Date.now()}`
+      await createCotacao({
+        id: cotId,
+        clienteId: apolice.clienteId || '',
+        cliente: apolice.cliente || '',
+        tipoSeguro: apolice.tipoSeguro || '',
+        seguradora: apolice.seguradora || '',
+        status: 'nova',
+        origem: 'renovacao',
+        apoliceOrigemId: apolice.id,
+        apoliceOrigem: apolice.numero || '',
+        observacoes: `Renovação da apólice ${apolice.numero || apolice.id} — vencimento: ${apolice.fimVigencia || ''}`,
+        createdAt: new Date().toISOString(),
+      })
+      await update(apolice.id, { ...apolice, statusRenovacao: 'cotando', cotacaoRenovacaoId: cotId })
+      showToast(`Cotação criada para renovação de ${apolice.cliente}!`)
+    } catch {
+      showToast('Erro ao gerar cotação.', 'error')
+    }
+  }
 
   async function atualizarStatus(id, novoStatus) {
     try {
@@ -120,8 +144,13 @@ export default function Renovacoes() {
                     {r.statusRenovacao === 'nao_iniciada' && (
                       <Button size="sm" onClick={() => atualizarStatus(r.id, 'contato_feito')} icon={<Phone size={13} />}>Iniciar</Button>
                     )}
-                    {r.statusRenovacao === 'contato_feito' && (
-                      <Button size="sm" onClick={() => atualizarStatus(r.id, 'cotando')} icon={<RefreshCw size={13} />}>Cotar</Button>
+                    {['nao_iniciada', 'contato_feito'].includes(r.statusRenovacao) && !r.cotacaoRenovacaoId && (
+                      <Button size="sm" variant="secondary" onClick={() => gerarCotacaoRenovacao(r)} icon={<FileText size={13} />}>Gerar Cotação</Button>
+                    )}
+                    {r.cotacaoRenovacaoId && r.statusRenovacao === 'cotando' && (
+                      <span className="text-xs text-cyber-cyan font-medium flex items-center gap-1 px-2 py-1 bg-cyber-cyan/10 rounded-lg">
+                        <FileText size={12} /> Cotação em andamento
+                      </span>
                     )}
                     {r.statusRenovacao === 'cotando' && (
                       <Button size="sm" onClick={() => atualizarStatus(r.id, 'proposta_enviada')}>Proposta Enviada</Button>

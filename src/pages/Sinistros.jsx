@@ -6,6 +6,7 @@ import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import Pagination from '../components/ui/Pagination'
 import DynamicForm from '../components/ui/DynamicForm'
+import Timeline from '../components/ui/Timeline'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { useCatalogo } from '../hooks/useCatalogo'
@@ -109,6 +110,7 @@ function exportarCSV(dados) {
 export default function Sinistros() {
   const { showToast } = useApp()
   const { data: sinistros, create, update, remove } = useResource('sinistros')
+  const { data: historico, refetch: refetchHist } = useResource('historico')
   const { data: usuarios } = useResource('usuarios')
   const { data: apolices } = useResource('apolices')
   const { getTipos, catalogo } = useCatalogo()
@@ -203,6 +205,7 @@ export default function Sinistros() {
         await logEvento('sinistro', id, 'Sinistro registrado', `Sinistro ${numero} (${payload.tipoSinistro}) registrado para ${payload.cliente}.`)
         showToast('Sinistro registrado!')
       }
+      refetchHist()
       setShowModal(false)
     } catch {
       showToast('Erro ao salvar. Verifique a conexão com o servidor.', 'error')
@@ -228,6 +231,7 @@ export default function Sinistros() {
         const timeline = [...(Array.isArray(s.timeline) ? s.timeline : []), novaEntrada]
         const updated = await update(id, { ...s, status: novoStatus, timeline })
         await logEvento('sinistro', id, 'Status atualizado', `Status do sinistro ${s.numero} alterado para "${novoStatus.replace(/_/g, ' ')}".`)
+        refetchHist()
         if (selected?.id === id) setSelected(updated)
       }
       showToast('Status atualizado!')
@@ -235,6 +239,8 @@ export default function Sinistros() {
       showToast('Erro ao atualizar status.', 'error')
     }
   }
+
+  const eventosHist = selected ? historico.filter(h => h.entity_type === 'sinistro' && h.entity_id === selected.id) : []
 
   return (
     <div className="space-y-4">
@@ -448,26 +454,11 @@ export default function Sinistros() {
               </div>
             </div>
 
-            {/* Timeline */}
-            {selected.timeline?.length > 0 && (
-              <div>
-                <p className={labelCls + ' mb-3'}>Linha do Tempo</p>
-                <div className="space-y-0">
-                  {selected.timeline.map((t, i) => (
-                    <div key={i} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-2 h-2 rounded-full bg-cyber-cyan/60 mt-1.5 shrink-0" />
-                        {i < selected.timeline.length - 1 && <div className="w-px bg-cyber-cyan/10 flex-1 mt-1" />}
-                      </div>
-                      <div className="pb-3">
-                        <p className="text-xs font-medium text-cyber-text">{t.acao}</p>
-                        <p className="text-[10px] text-cyber-muted">{fmtDate(t.data)} · {t.responsavel}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Histórico de eventos */}
+            <div>
+              <p className={labelCls + ' mb-3'}>Histórico</p>
+              <Timeline events={eventosHist} />
+            </div>
           </div>
         </Modal>
       )}

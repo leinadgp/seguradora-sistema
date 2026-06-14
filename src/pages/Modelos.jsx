@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Copy, Check, MessageSquare, Mail, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, Check, MessageSquare, Mail, ChevronDown, ChevronUp, Plus, Edit2, Trash2 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import useResource from '../hooks/useResource'
+import Modal from '../components/ui/Modal'
+import Button from '../components/ui/Button'
 
-const MODELOS = [
+const MODELOS_PADRAO = [
   // ─── WhatsApp ─────────────────────────────────────────────────
   {
     id: 'wa-entrada',
@@ -424,10 +427,12 @@ Nº APÓLICE A SER ENDOSSADA:`,
   },
 ]
 
-const TIPOS_UNICOS = ['Todos', ...new Set(MODELOS.map(m => m.tipoSeguro).filter(t => t !== 'Todos'))]
 const CATEGORIAS = ['Todos', 'WhatsApp', 'E-mail']
+const TIPOS_SEGURO = ['Todos', 'Seguro Garantia', 'Risco Engenharia', 'Consórcio', 'Auto', 'Vida', 'Saúde', 'Patrimonial', 'Responsabilidade Civil']
 
-function ModeloCard({ modelo }) {
+const emptyForm = { titulo: '', categoria: 'WhatsApp', tipoSeguro: 'Todos', assunto: '', corpo: '' }
+
+function ModeloCard({ modelo, onEdit, onDelete }) {
   const { showToast } = useApp()
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -455,7 +460,12 @@ function ModeloCard({ modelo }) {
             {modelo.categoria === 'WhatsApp' ? <MessageSquare size={16} /> : <Mail size={16} />}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-cyber-text text-sm leading-snug">{modelo.titulo}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-cyber-text text-sm leading-snug">{modelo.titulo}</p>
+              {modelo._custom && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/20 uppercase tracking-wide">Personalizado</span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-1.5 mt-1">
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${modelo.categoria === 'WhatsApp' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/20'}`}>
                 {modelo.categoria}
@@ -466,7 +476,17 @@ function ModeloCard({ modelo }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onEdit && (
+            <button onClick={() => onEdit(modelo)} className="p-1.5 rounded-lg text-cyber-muted hover:text-cyber-cyan hover:bg-cyber-cyan/10 transition-colors cursor-pointer" title="Editar">
+              <Edit2 size={13} />
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={() => onDelete(modelo.id)} className="p-1.5 rounded-lg text-cyber-muted hover:text-cyber-red hover:bg-cyber-red/10 transition-colors cursor-pointer" title="Excluir">
+              <Trash2 size={13} />
+            </button>
+          )}
           <button
             onClick={() => copiar(textoCompleto)}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${copied ? 'bg-cyber-green/10 text-cyber-green border-cyber-green/30' : 'bg-cyber-surface/60 text-cyber-muted border-cyber-border/40 hover:text-cyber-cyan hover:border-cyber-cyan/40'}`}
@@ -512,19 +532,75 @@ function ModeloCard({ modelo }) {
 }
 
 export default function Modelos() {
+  const { showToast } = useApp()
+  const { data: modelosDB, create, update, remove } = useResource('modelos')
+
   const [search, setSearch] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('Todos')
   const [filtroTipo, setFiltroTipo] = useState('Todos')
+  const [showModal, setShowModal] = useState(false)
+  const [editando, setEditando] = useState(null)
+  const [form, setForm] = useState(emptyForm)
+  const [pendingDelete, setPendingDelete] = useState(null)
+
+  const set = (field, value) => setForm(f => ({ ...f, [field]: value }))
+
+  function abrirNovo() {
+    setEditando(null)
+    setForm(emptyForm)
+    setShowModal(true)
+  }
+
+  function abrirEditar(modelo) {
+    setEditando(modelo)
+    setForm({ titulo: modelo.titulo, categoria: modelo.categoria, tipoSeguro: modelo.tipoSeguro || 'Todos', assunto: modelo.assunto || '', corpo: modelo.corpo || '' })
+    setShowModal(true)
+  }
+
+  async function handleSave() {
+    if (!form.titulo.trim() || !form.corpo.trim()) {
+      showToast('Título e corpo são obrigatórios.', 'error')
+      return
+    }
+    const payload = { ...form, id: editando ? editando.id : `mod_${Date.now()}`, _custom: true }
+    try {
+      if (editando) {
+        await update(editando.id, payload)
+        showToast('Modelo atualizado!')
+      } else {
+        await create(payload)
+        showToast('Modelo criado!')
+      }
+      setShowModal(false)
+    } catch {
+      showToast('Erro ao salvar modelo.', 'error')
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await remove(id)
+      setPendingDelete(null)
+      showToast('Modelo removido.')
+    } catch {
+      showToast('Erro ao remover.', 'error')
+    }
+  }
+
+  const todosModelos = useMemo(() => [
+    ...modelosDB.map(m => ({ ...m, _custom: true })),
+    ...MODELOS_PADRAO,
+  ], [modelosDB])
 
   const filtrados = useMemo(() => {
     const q = search.toLowerCase()
-    return MODELOS.filter(m => {
-      const matchSearch = !q || m.titulo.toLowerCase().includes(q) || m.corpo.toLowerCase().includes(q) || (m.assunto || '').toLowerCase().includes(q)
+    return todosModelos.filter(m => {
+      const matchSearch = !q || m.titulo.toLowerCase().includes(q) || (m.corpo || '').toLowerCase().includes(q) || (m.assunto || '').toLowerCase().includes(q)
       const matchCat = filtroCategoria === 'Todos' || m.categoria === filtroCategoria
       const matchTipo = filtroTipo === 'Todos' || m.tipoSeguro === filtroTipo
       return matchSearch && matchCat && matchTipo
     })
-  }, [search, filtroCategoria, filtroTipo])
+  }, [todosModelos, search, filtroCategoria, filtroTipo])
 
   const porCategoria = useMemo(() => {
     const mapa = {}
@@ -537,9 +613,12 @@ export default function Modelos() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-cyber-text">Modelos de Comunicação</h1>
-        <p className="text-sm text-cyber-muted mt-1">{MODELOS.length} modelos de WhatsApp e E-mail · ATTENTI Corretora de Seguros</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-cyber-text">Modelos de Comunicação</h1>
+          <p className="text-sm text-cyber-muted mt-1">{todosModelos.length} modelos · {modelosDB.length} personalizados</p>
+        </div>
+        <Button onClick={abrirNovo} icon={<Plus size={16} />}>Novo Modelo</Button>
       </div>
 
       {/* Filtros */}
@@ -552,29 +631,21 @@ export default function Modelos() {
             className="w-full text-sm border border-cyber-border/50 rounded-xl px-4 py-2.5 bg-cyber-card focus:outline-none focus:border-cyber-cyan/50 text-cyber-text placeholder:text-cyber-muted"
           />
         </div>
-        <select
-          value={filtroCategoria}
-          onChange={e => setFiltroCategoria(e.target.value)}
-          className="text-sm border border-cyber-border/50 rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none text-cyber-text"
-        >
+        <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="text-sm border border-cyber-border/50 rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none text-cyber-text">
           {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
         </select>
-        <select
-          value={filtroTipo}
-          onChange={e => setFiltroTipo(e.target.value)}
-          className="text-sm border border-cyber-border/50 rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none text-cyber-text"
-        >
-          {TIPOS_UNICOS.map(t => <option key={t}>{t}</option>)}
+        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className="text-sm border border-cyber-border/50 rounded-xl px-3 py-2.5 bg-cyber-card focus:outline-none text-cyber-text">
+          <option>Todos</option>
+          {['Seguro Garantia', 'Risco Engenharia', 'Consórcio', 'Auto', 'Vida', 'Saúde', 'Patrimonial'].map(t => <option key={t}>{t}</option>)}
         </select>
       </div>
 
       {filtrados.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-cyber-muted">Nenhum modelo encontrado para os filtros selecionados.</p>
+          <p className="text-cyber-muted">Nenhum modelo encontrado.</p>
         </div>
       )}
 
-      {/* Lista agrupada por categoria */}
       {Object.entries(porCategoria).map(([cat, lista]) => (
         <div key={cat}>
           <div className="flex items-center gap-2 mb-3">
@@ -583,10 +654,71 @@ export default function Modelos() {
             <span className="text-xs text-cyber-muted">({lista.length})</span>
           </div>
           <div className="space-y-2">
-            {lista.map(m => <ModeloCard key={m.id} modelo={m} />)}
+            {lista.map(m => (
+              <ModeloCard
+                key={m.id}
+                modelo={m}
+                onEdit={m._custom ? abrirEditar : undefined}
+                onDelete={m._custom ? () => setPendingDelete(m.id) : undefined}
+              />
+            ))}
           </div>
         </div>
       ))}
+
+      {/* Modal criar/editar */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editando ? 'Editar Modelo' : 'Novo Modelo'} size="lg"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button onClick={handleSave}>{editando ? 'Salvar' : 'Criar'}</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-cyber-muted mb-1">Título *</label>
+            <input value={form.titulo} onChange={e => set('titulo', e.target.value)} className="w-full text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-surface focus:outline-none focus:border-cyber-cyan/50" placeholder="Ex: Aviso de vencimento — Auto" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-cyber-muted mb-1">Canal</label>
+              <select value={form.categoria} onChange={e => set('categoria', e.target.value)} className="w-full text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-surface focus:outline-none">
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="E-mail">E-mail</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-cyber-muted mb-1">Tipo de Seguro</label>
+              <select value={form.tipoSeguro} onChange={e => set('tipoSeguro', e.target.value)} className="w-full text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-surface focus:outline-none">
+                {TIPOS_SEGURO.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+          {form.categoria === 'E-mail' && (
+            <div>
+              <label className="block text-xs font-medium text-cyber-muted mb-1">Assunto do e-mail</label>
+              <input value={form.assunto} onChange={e => set('assunto', e.target.value)} className="w-full text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-surface focus:outline-none focus:border-cyber-cyan/50" placeholder="Assunto padrão..." />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-cyber-muted mb-1">Corpo / Mensagem *</label>
+            <textarea value={form.corpo} onChange={e => set('corpo', e.target.value)} rows={10} className="w-full text-sm border border-cyber-border rounded-xl px-3 py-2.5 bg-cyber-surface focus:outline-none focus:border-cyber-cyan/50 font-mono resize-y" placeholder="Texto do modelo..." />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal confirmação de exclusão */}
+      <Modal isOpen={!!pendingDelete} onClose={() => setPendingDelete(null)} title="Excluir Modelo" size="sm"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setPendingDelete(null)}>Cancelar</Button>
+            <Button variant="danger" onClick={() => handleDelete(pendingDelete)}>Excluir</Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-cyber-text">Tem certeza que deseja excluir este modelo personalizado?</p>
+      </Modal>
     </div>
   )
 }

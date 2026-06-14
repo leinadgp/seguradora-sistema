@@ -13,7 +13,7 @@ const ENTITIES = [
   'comissoes', 'sinistros', 'assistencias', 'documentos', 'tarefas',
   'produtos', 'producaoMensal', 'alertas', 'endossos', 'produtores',
   'corretoras', 'cotacoes', 'historico', 'seguros_catalogo', 'configuracoes',
-  'conversas', 'mensagens', 'solicitacoes_documentos',
+  'conversas', 'mensagens', 'solicitacoes_documentos', 'modelos',
 ]
 
 // ─── AUTH ──────────────────────────────────────────────────────────────────

@@ -90,6 +90,70 @@ export default function Dashboard() {
     { label: 'Endossos',  valor: endossos.length,  cor: 'text-cyber-amber',  to: '/endossos' },
   ]
 
+  // Alertas dinâmicos gerados a partir dos dados reais
+  const alertasGerados = useMemo(() => {
+    const hoje = new Date()
+    const lista = []
+
+    // Apólices vencendo em ≤30 dias
+    apolices.filter(a => a.status === 'ativa').forEach(a => {
+      const dias = a.diasParaVencer != null
+        ? Number(a.diasParaVencer)
+        : Math.ceil((new Date(a.fimVigencia) - hoje) / 86400000)
+      if (!isNaN(dias) && dias >= 0 && dias <= 30) {
+        lista.push({
+          id: `renovacao_${a.id}`,
+          tipo: 'renovacao',
+          urgencia: dias <= 7 ? 'alta' : 'media',
+          mensagem: `Apólice de ${a.cliente} vence em ${dias}d (${a.numero || a.id})`,
+          link: '/renovacoes',
+        })
+      }
+    })
+
+    // Tarefas atrasadas (status = atrasada OU data anterior a hoje)
+    tarefas.filter(t => t.status !== 'concluida').forEach(t => {
+      const isAtrasada = t.status === 'atrasada' || (t.data && new Date(t.data) < hoje)
+      if (isAtrasada) {
+        lista.push({
+          id: `tarefa_${t.id}`,
+          tipo: 'tarefa',
+          urgencia: 'alta',
+          mensagem: `Tarefa atrasada: ${t.titulo || t.id}${t.responsavel ? ` (${t.responsavel})` : ''}`,
+          link: '/tarefas',
+        })
+      }
+    })
+
+    // Sinistros sem atualização há ≥7 dias
+    sinistros.filter(s => ['aberto', 'em_analise', 'aguardando_seguradora'].includes(s.status)).forEach(s => {
+      const refDate = s.updatedAt || s.dataAbertura
+      if (refDate) {
+        const dias = Math.ceil((hoje - new Date(refDate)) / 86400000)
+        if (dias >= 7) {
+          lista.push({
+            id: `sinistro_${s.id}`,
+            tipo: 'sinistro',
+            urgencia: dias >= 15 ? 'alta' : 'media',
+            mensagem: `Sinistro de ${s.cliente || s.id} sem atualização há ${dias}d`,
+            link: '/sinistros',
+          })
+        }
+      }
+    })
+
+    return lista.sort((a, b) => (a.urgencia === 'alta' ? -1 : 1))
+  }, [apolices, tarefas, sinistros])
+
+  // Mescla alertas manuais do DB com os gerados automaticamente
+  const todosAlertas = useMemo(() => {
+    const ids = new Set(alertasGerados.map(a => a.id))
+    return [
+      ...alertasGerados,
+      ...alertas.filter(a => !ids.has(a.id)).map(a => ({ ...a, mensagem: a.mensagem || a.titulo })),
+    ]
+  }, [alertasGerados, alertas])
+
   const renovacoesProximas = apolices
     .filter(a => a.diasParaVencer <= 60 && a.status === 'ativa')
     .sort((a, b) => a.diasParaVencer - b.diasParaVencer)
@@ -137,16 +201,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       {/* Alertas */}
-      {alertas.length > 0 && (
+      {todosAlertas.length > 0 && (
         <div className="glass rounded-2xl px-5 py-4 border border-cyber-amber/20"
           style={{ background: 'rgba(245,158,11,0.04)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Bell size={14} className="text-cyber-amber shrink-0" />
             <span className="text-xs font-display font-bold text-cyber-amber tracking-wide uppercase">Alertas Críticos</span>
-            <span className="ml-auto text-xs text-cyber-amber font-data font-semibold">{alertas.length} itens</span>
+            <span className="ml-auto text-xs text-cyber-amber font-data font-semibold">{todosAlertas.length} itens</span>
           </div>
           <div className="space-y-1.5">
-            {alertas.map(alerta => (
+            {todosAlertas.slice(0, 10).map(alerta => (
               <button
                 key={alerta.id}
                 onClick={() => navigate(alerta.link)}
@@ -160,6 +224,9 @@ export default function Dashboard() {
                 <ChevronRight size={13} className="text-cyber-amber/40 ml-auto shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
+            {todosAlertas.length > 10 && (
+              <p className="text-xs text-cyber-muted text-center pt-1">+ {todosAlertas.length - 10} alertas adicionais</p>
+            )}
           </div>
         </div>
       )}
