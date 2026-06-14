@@ -26,6 +26,7 @@ import Corretoras from './pages/Corretoras'
 import Cotacoes from './pages/Cotacoes'
 import Modelos from './pages/Modelos'
 import Conversas from './pages/Conversas'
+import Portal from './pages/Portal'
 
 function ProtectedLayout() {
   const { user } = useAuth()
@@ -40,6 +41,7 @@ export default function App() {
         <AppProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/portal/:token" element={<Portal />} />
             <Route path="/" element={<ProtectedLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />

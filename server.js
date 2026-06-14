@@ -25,6 +25,7 @@ const ENTITIES = {
   configuracoes: [],
   conversas: [],
   mensagens: [],
+  solicitacoes_documentos: [],
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
@@ -356,6 +357,39 @@ app.get('/api/conversas/:id/mensagens', async (req, res) => {
       .sort((a, b) => a.messageTimestamp - b.messageTimestamp)
 
     res.json(mensagens)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── PORTAL PÚBLICO (sem autenticação) ───────────────────────────────────────
+
+// GET /api/portal/:token — leitura pública por token
+app.get('/api/portal/:token', async (req, res) => {
+  try {
+    const { token } = req.params
+    const { data, error } = await supabase
+      .from('solicitacoes_documentos')
+      .select('data')
+      .eq('id', token)
+      .single()
+    if (error || !data) return res.status(404).json({ error: 'Solicitação não encontrada.' })
+    res.json(data.data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/portal/:token — cliente salva documentos enviados
+app.put('/api/portal/:token', async (req, res) => {
+  try {
+    const { token } = req.params
+    const item = { ...req.body, id: token }
+    const { error } = await supabase
+      .from('solicitacoes_documentos')
+      .upsert({ id: token, data: item })
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(item)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

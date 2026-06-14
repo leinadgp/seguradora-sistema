@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { input as inputCls } from '../lib/styles'
-import { Plus, Search, Eye, ArrowRight, Shield, FileText, LayoutGrid, List, Trash2 } from 'lucide-react'
+import { Plus, Search, Eye, ArrowRight, Shield, FileText, LayoutGrid, List, Trash2, FolderUp } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -13,6 +13,7 @@ import Timeline from '../components/ui/Timeline'
 import { useApp } from '../context/AppContext'
 import useResource from '../hooks/useResource'
 import { insuranceTypeFields } from '../data/insuranceFields'
+import SolicitarDocumentosModal from '../components/ui/SolicitarDocumentosModal'
 import { genNumero, logEvento, todayISO, propostaStatus, propostaKanbanList, propostaStatusList } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
 const formasPagamento = ['Débito automático', 'Cartão de crédito', 'Boleto', 'PIX', '1x no cartão', '3x no cartão', '6x no cartão', '10x no cartão', '12x no cartão']
@@ -55,6 +56,7 @@ export default function Propostas() {
   const [view, setView] = useState('kanban')
   const [showModal, setShowModal] = useState(false)
   const [showDetalhes, setShowDetalhes] = useState(false)
+  const [showSolicitar, setShowSolicitar] = useState(false)
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
@@ -336,6 +338,7 @@ export default function Propostas() {
           <div className="flex flex-wrap gap-2 justify-between">
             <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Voltar</Button>
             <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon={<FolderUp size={14} />} onClick={() => setShowSolicitar(true)}>Solicitar Documentos</Button>
               {selected?.quote_id && <Button variant="secondary" icon={<FileText size={14} />} onClick={() => navigate(`/cotacoes?focus=${selected.quote_id}`)}>Ver Cotação</Button>}
               {selected?.converted_policy_id ? (
                 <Button icon={<Shield size={14} />} onClick={() => navigate(`/apolices?focus=${selected.converted_policy_id}`)}>Ver Pólice</Button>
@@ -684,6 +687,20 @@ export default function Propostas() {
           </div>
         )}
       </Modal>
+
+      {selected && (
+        <SolicitarDocumentosModal
+          isOpen={showSolicitar}
+          onClose={() => setShowSolicitar(false)}
+          cliente={selected.cliente}
+          clienteId={selected.clienteId || ''}
+          whatsapp={selected.whatsapp || ''}
+          tipoSeguro={selected.tipoSeguro}
+          origem="proposta"
+          origemId={selected.id}
+          origemNumero={selected.numero}
+        />
+      )}
     </div>
   )
 }

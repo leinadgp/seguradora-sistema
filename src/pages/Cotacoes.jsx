@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Eye, Edit2, FileText, ArrowRight, LayoutGrid, List, ClipboardList, Trash2 } from 'lucide-react'
+import { Plus, Search, Eye, Edit2, FileText, ArrowRight, LayoutGrid, List, ClipboardList, Trash2, FolderUp } from 'lucide-react'
 import { input as inputCls } from '../lib/styles'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
@@ -16,6 +16,7 @@ import {
   cotacaoStatus, cotacaoStatusList, cotacaoKanbanList, tiposSeguro,
 } from '../lib/flow'
 import { useCatalogo } from '../hooks/useCatalogo'
+import SolicitarDocumentosModal from '../components/ui/SolicitarDocumentosModal'
 
 const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', whatsapp: '', email: '',
@@ -58,6 +59,7 @@ export default function Cotacoes() {
   const [form, setForm] = useState(emptyForm)
   const [isEditing, setIsEditing] = useState(false)
   const [convertConfirm, setConvertConfirm] = useState(null) // { cot } para confirmar gerar proposta
+  const [showSolicitar, setShowSolicitar] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo, getEntrada } = useCatalogo()
   const [expandCobs, setExpandCobs] = useState(false)
@@ -353,6 +355,7 @@ export default function Cotacoes() {
           <div className="flex flex-wrap gap-2 justify-between">
             <Button variant="secondary" onClick={() => setShowDetalhes(false)}>Voltar</Button>
             <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon={<FolderUp size={14} />} onClick={() => setShowSolicitar(true)}>Solicitar Documentos</Button>
               <Button variant="secondary" icon={<Edit2 size={14} />} onClick={() => openEdit(selected)}>Editar</Button>
               {selected?.converted_proposal_id ? (
                 <Button onClick={() => navigate(`/propostas?focus=${selected.converted_proposal_id}`)} icon={<ArrowRight size={14} />}>Ver Proposta</Button>
@@ -602,6 +605,20 @@ export default function Cotacoes() {
           <p className="text-sm text-cyber-muted">A cotação de <strong className="text-cyber-text">{convertConfirm?.cliente}</strong> foi aprovada. Deseja gerar a proposta agora?</p>
         </div>
       </Modal>
+
+      {selected && (
+        <SolicitarDocumentosModal
+          isOpen={showSolicitar}
+          onClose={() => setShowSolicitar(false)}
+          cliente={selected.cliente}
+          clienteId={selected.clienteId || ''}
+          whatsapp={selected.whatsapp || ''}
+          tipoSeguro={selected.tipoSeguro}
+          origem="cotacao"
+          origemId={selected.id}
+          origemNumero={selected.numero}
+        />
+      )}
     </div>
   )
 }
