@@ -403,6 +403,33 @@ app.put('/api/portal/:token', async (req, res) => {
   const item = { ...req.body, id: token }
   const { error } = await supabase.from('solicitacoes_documentos').upsert({ id: token, data: item })
   if (error) return res.status(500).json({ error: error.message })
+
+  // Sincroniza docs com arquivo enviado na tabela 'documentos'
+  const docsArr = item.documentos || []
+  for (let i = 0; i < docsArr.length; i++) {
+    const doc = docsArr[i]
+    if (!doc.dataUrl) continue
+    const docId = `portal_${token}_${i}`
+    await supabase.from('documentos').upsert({
+      id: docId,
+      data: {
+        id: docId,
+        clienteId: item.clienteId || '',
+        cliente: item.cliente || '',
+        tipo: doc.tipo,
+        nome: doc.nome || doc.tipo,
+        status: doc.status || 'enviado',
+        observacoes: doc.observacoes || '',
+        dataUrl: doc.dataUrl,
+        fileType: doc.fileType || '',
+        fileSize: doc.fileSize || 0,
+        dataEnvio: doc.dataEnvio || new Date().toISOString().split('T')[0],
+        origem: 'portal',
+        portalId: token,
+      }
+    })
+  }
+
   res.json(item)
 })
 
@@ -433,6 +460,36 @@ app.put('/api/:entity/:id', async (req, res) => {
   const item = { ...req.body, id }
   const { error } = await supabase.from(entity).upsert({ id, data: item })
   if (error) return res.status(500).json({ error: error.message })
+
+  // Quando operador aprova/rejeita doc do portal, atualiza status em 'documentos'
+  if (entity === 'solicitacoes_documentos' && item.documentos) {
+    for (let i = 0; i < item.documentos.length; i++) {
+      const doc = item.documentos[i]
+      const docId = `portal_${id}_${i}`
+      const { data: existing } = await supabase.from('documentos').select('id').eq('id', docId).single()
+      if (existing) {
+        await supabase.from('documentos').upsert({
+          id: docId,
+          data: {
+            id: docId,
+            clienteId: item.clienteId || '',
+            cliente: item.cliente || '',
+            tipo: doc.tipo,
+            nome: doc.nome || doc.tipo,
+            status: doc.status,
+            observacoes: doc.observacoes || '',
+            dataUrl: doc.dataUrl || '',
+            fileType: doc.fileType || '',
+            fileSize: doc.fileSize || 0,
+            dataEnvio: doc.dataEnvio || new Date().toISOString().split('T')[0],
+            origem: 'portal',
+            portalId: id,
+          }
+        })
+      }
+    }
+  }
+
   res.json(item)
 })
 

@@ -246,7 +246,10 @@ export default function Documentos() {
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-cyber-text truncate">{d.nome}</p>
+                  <p className="text-sm font-medium text-cyber-text truncate flex items-center gap-1.5">
+                    {d.nome}
+                    {d.origem === 'portal' && <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-400/20 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-0.5"><Link2 size={9} /> Portal</span>}
+                  </p>
                   <p className="text-xs text-cyber-muted">
                     {d.tipo} · {d.cliente}
                     {d.apolice ? ` · ${d.apolice}` : ''}

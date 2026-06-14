@@ -426,7 +426,7 @@ export default function Clientes() {
 
       {/* Modal Preview de Documento */}
       {previewDocCliente && (
-        <Modal isOpen title={previewDocCliente.nome} onClose={() => setPreviewDocCliente(null)} size="xl"
+        <Modal isOpen title={previewDocCliente.nome} onClose={() => setPreviewDocCliente(null)} size="xl" layer={60}
           footer={
             <div className="flex justify-between">
               <Button variant="secondary" onClick={() => setPreviewDocCliente(null)}>Fechar</Button>

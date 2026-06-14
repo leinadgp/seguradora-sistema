@@ -9,7 +9,7 @@ const sizes = {
   full: 'max-w-[95vw]',
 }
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md', footer }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md', footer, layer = 50 }) {
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden'
     else document.body.style.overflow = ''
@@ -19,7 +19,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" style={{ zIndex: layer }}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className={`relative glass border border-cyber-cyan/10 rounded-t-2xl sm:rounded-2xl shadow-modal w-full ${sizes[size]} max-h-[95vh] flex flex-col animate-slide-up`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-cyber-cyan/10 shrink-0">
