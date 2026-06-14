@@ -13,7 +13,9 @@
     "import:sgcor:dry": "node --env-file=.env scripts/import-sgcor.js --dry-run",
     "import:catalogo": "node --env-file=.env scripts/import-catalogo.js",
     "import:catalogo:dry": "node --env-file=.env scripts/import-catalogo.js --dry-run",
-    "db:limpar": "node --env-file=.env scripts/limpar-dados-ficticios.js"
+    "db:limpar": "node --env-file=.env scripts/limpar-dados-ficticios.js",
+    "import:catalogo:novo": "node --env-file=.env scripts/import-novo-catalogo.js",
+    "import:catalogo:novo:dry": "node --env-file=.env scripts/import-novo-catalogo.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

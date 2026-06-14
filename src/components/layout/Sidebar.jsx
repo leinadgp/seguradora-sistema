@@ -94,19 +94,12 @@ export default function Sidebar({ open, onClose }) {
         lg:translate-x-0 lg:static lg:flex shrink-0
       `}>
         {/* Logo */}
-        <div className="relative flex items-center justify-between px-4 py-4 border-b border-cyber-cyan/10">
-          <div className="flex items-center gap-2.5">
-            <div className="relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0 glow-cyan"
-              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' }}>
-              <ShieldCheck size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="font-display text-xs font-bold text-cyber-text leading-none tracking-wide">
-                SEGURO<span className="neon-text-cyan">CTRL</span>
-              </p>
-              <p className="text-[9px] text-cyber-muted mt-0.5 tracking-widest uppercase">Sistema v2.0</p>
-            </div>
-          </div>
+        <div className="relative flex items-center justify-between px-4 py-3 border-b border-cyber-cyan/10">
+          <img
+            src="/attenti-logo.png"
+            alt="Attenti Corretora de Seguros"
+            className="h-10 w-auto object-contain"
+          />
           <button
             onClick={onClose}
             className="lg:hidden p-1.5 rounded-lg hover:bg-cyber-cyan/10 transition-colors text-cyber-muted hover:text-cyber-cyan cursor-pointer"

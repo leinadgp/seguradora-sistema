@@ -1,0 +1,78 @@
+{
+  "Seguros de Pessoas": [
+    {
+      "nome": "Seguro de Vida",
+      "subcategorias": "Individual, Grupo, Resgatável, Universal",
+      "coberturas_basicas": "Morte (Natural e Acidental)",
+      "coberturas_adicionais": "Invalidez Permanente Total ou Parcial por Acidente (IPA), Antecipação Especial por Doença, Doenças Graves, Diária por Incapacidade Temporária (DIT), Assistência Funeral"
+    },
+    {
+      "nome": "Seguro de Acidentes Pessoais",
+      "subcategorias": "Individual, Coletivo, Escolar, Viagem",
+      "coberturas_basicas": "Morte Acidental, Invalidez Permanente por Acidente",
+      "coberturas_adicionais": "Despesas Médicas, Hospitalares e Odontológicas (DMHO), Diárias de Internação Hospitalar"
+    },
+    {
+      "nome": "Seguro Saúde e Odontológico",
+      "subcategorias": "Individual/Familiar, Coletivo por Adesão, Coletivo Empresarial",
+      "coberturas_basicas": "Consultas, Exames Laboratoriais, Internações Hospitalares, Cirurgias, Tratamentos Profiláticos e Endodônticos",
+      "coberturas_adicionais": "Reembolso Fora da Rede, Vacinas, Cirurgia Refrativa, Assistência Internacional"
+    }
+  ],
+  "Seguros Patrimoniais": [
+    {
+      "nome": "Seguro Residencial",
+      "subcategorias": "Casa, Apartamento, Habitual, Veraneio",
+      "coberturas_basicas": "Incêndio, Queda de Raio, Explosão",
+      "coberturas_adicionais": "Roubo e Furto Qualificado, Danos Elétricos, Vendaval/Granizo, Responsabilidade Civil Familiar, Quebra de Vidros, Assistência 24h"
+    },
+    {
+      "nome": "Seguro Empresarial e Condomínio",
+      "subcategorias": "PMEs, Grandes Riscos, Condomínios Residenciais, Condomínios Comerciais",
+      "coberturas_basicas": "Incêndio, Fumaça e Explosão",
+      "coberturas_adicionais": "Lucros Cessantes, Danos Elétricos, Roubo de Bens/Valores, RC Empregador, RC Síndico, Quebra de Máquinas"
+    }
+  ],
+  "Seguros de Automóveis e Transportes": [
+    {
+      "nome": "Seguro Automóvel",
+      "subcategorias": "Individual, Frota, Moto, Caminhão, Utilizados por App",
+      "coberturas_basicas": "Casco Compreensivo (Colisão, Incêndio e Roubo/Furto)",
+      "coberturas_adicionais": "Responsabilidade Civil Facultativa Veicular (RCF-V Danos Materiais), Responsabilidade Civil Facultativa Veicular (RCF-V Danos Corporais), Danos Morais, Carro Reserva, Vidros, Assistência 24h"
+    },
+    {
+      "nome": "Seguro de Transporte de Cargas",
+      "subcategorias": "RCTR-C (Obrigatório do Transportador), RCF-DC (Desvio de Carga), Seguro de Transporte (Embarcador)",
+      "coberturas_basicas": "Capotagem, Colisão, Tombamento, Incêndio no Veículo Transportador",
+      "coberturas_adicionais": "Roubo por Desaparecimento de Carga, Avarias por Desabamento, Limpeza de Pista"
+    }
+  ],
+  "Seguros Rurais": [
+    {
+      "nome": "Seguro Agrícola e Paramétrico",
+      "subcategorias": "Agrícola Multirrisco, Seguro de Produtividade, Seguro de Índice Climático (Paramétrico)",
+      "coberturas_basicas": "Geada, Granizo, Seca Prolongada, Chuvas Excessivas, Ventos Fortes, Tromba d'água",
+      "coberturas_adicionais": "Seguro de Replantio, Variação de Preço de Mercado"
+    }
+  ],
+  "Seguros Financeiros e Responsabilidade Civil": [
+    {
+      "nome": "Seguro Garantia e Fiança Locatícia",
+      "subcategorias": "Garantia Licitante (Bid Bond), Executante (Performance Bond), Judicial, Fiança Locatícia",
+      "coberturas_basicas": "Inadimplemento do Tomador em Relação às Obrigações Contratuais",
+      "coberturas_adicionais": "Ações Trabalhistas e Previdenciárias, Danos ao Imóvel e Pintura"
+    },
+    {
+      "nome": "Seguro de Responsabilidade Civil (E&O e D&O)",
+      "subcategorias": "E&O Médicos, E&O Advogados, E&O Engenheiros, D&O Diretores e Administradores",
+      "coberturas_basicas": "Custos de Defesa Jurídica, Pagamento de Indenizações por Sentença ou Acordo",
+      "coberturas_adicionais": "Danos Morais, Custos de Reabilitação de Imagem Pública"
+    },
+    {
+      "nome": "Seguro Cibernético (Cyber Risk)",
+      "subcategorias": "Responsabilidade por Dados, Resposta a Incidentes, Lucros Cessantes por Interrupção de Rede",
+      "coberturas_basicas": "Investigação Forense Digital, Custos de Notificação de Titulares, Gerenciamento de Crise, Multas Regulatórias",
+      "coberturas_adicionais": "Extorsão Cibernética (Ransomware), Lucros Cessantes por Parada de Servidores, Fraude por Engenharia Social"
+    }
+  ]
+}

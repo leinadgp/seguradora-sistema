@@ -42,11 +42,13 @@ function CatalogoAdmin() {
   const [editTipo, setEditTipo] = useState(null)        // registro completo para editar
   const [addSubModal, setAddSubModal] = useState(null)  // id do tipo onde adicionar subcategoria
   const [newSubNome, setNewSubNome] = useState('')
-  const [newSubCobs, setNewSubCobs] = useState('')      // coberturas separadas por vírgula
+  const [newSubCobs, setNewSubCobs] = useState([])      // array de strings
   const [novoTipo, setNovoTipo] = useState(null)        // modal novo tipo
   const [editSubModal, setEditSubModal] = useState(null) // { tipoId, subId }
   const [editSubNome, setEditSubNome] = useState('')
-  const [editSubCobs, setEditSubCobs] = useState('')
+  const [editSubCobs, setEditSubCobs] = useState([])   // array de strings
+  const [editCobInput, setEditCobInput] = useState('')  // input temporário
+  const [newCobInput, setNewCobInput] = useState('')    // input temporário para novo modal
 
   const emptyNovoTipo = { tipo: '', ramo: '', modulo: 'seguro', ordem: catalogo.length + 1, ativo: true, subcategorias: [] }
 
@@ -84,16 +86,38 @@ function CatalogoAdmin() {
   function abrirEditSub(entrada, sub) {
     setEditSubModal({ tipoId: entrada.id, subId: sub.id })
     setEditSubNome(sub.nome)
-    setEditSubCobs((sub.coberturas || []).join(', '))
+    setEditSubCobs(sub.coberturas || [])
+    setEditCobInput('')
+  }
+
+  function adicionarCobEdit(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const val = editCobInput.replace(/,$/, '').trim()
+      if (val && !editSubCobs.includes(val)) setEditSubCobs(prev => [...prev, val])
+      setEditCobInput('')
+    }
+  }
+
+  function adicionarCobNew(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const val = newCobInput.replace(/,$/, '').trim()
+      if (val && !newSubCobs.includes(val)) setNewSubCobs(prev => [...prev, val])
+      setNewCobInput('')
+    }
   }
 
   async function salvarEdicaoSub() {
     if (!editSubNome.trim()) { showToast('Informe o nome.', 'error'); return }
+    const cobsFinal = editCobInput.trim()
+      ? [...editSubCobs, editCobInput.trim()]
+      : editSubCobs
     const entrada = catalogo.find(c => c.id === editSubModal.tipoId)
     if (!entrada) return
     const subs = (entrada.subcategorias || []).map(s =>
       s.id === editSubModal.subId
-        ? { ...s, nome: editSubNome.trim(), coberturas: editSubCobs.split(',').map(x => x.trim()).filter(Boolean) }
+        ? { ...s, nome: editSubNome.trim(), coberturas: cobsFinal }
         : s
     )
     try {
@@ -120,12 +144,15 @@ function CatalogoAdmin() {
     const entrada = catalogo.find(c => c.id === addSubModal)
     if (!entrada) return
     const novaId = `${entrada.id}-${newSubNome.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
+    const cobsFinal = newCobInput.trim()
+      ? [...newSubCobs, newCobInput.trim()]
+      : newSubCobs
     const subs = [
       ...(entrada.subcategorias || []),
       {
         id: novaId,
         nome: newSubNome.trim(),
-        coberturas: newSubCobs.split(',').map(s => s.trim()).filter(Boolean),
+        coberturas: cobsFinal,
         ordem: (entrada.subcategorias?.length || 0) + 1,
         ativo: true,
       },
@@ -133,7 +160,7 @@ function CatalogoAdmin() {
     try {
       await salvarEntrada({ ...entrada, subcategorias: subs })
       showToast(`Subcategoria "${newSubNome}" adicionada!`)
-      setAddSubModal(null); setNewSubNome(''); setNewSubCobs('')
+      setAddSubModal(null); setNewSubNome(''); setNewSubCobs([]); setNewCobInput('')
     } catch {
       showToast('Erro ao adicionar subcategoria.', 'error')
     }
@@ -263,22 +290,66 @@ function CatalogoAdmin() {
       ))}
 
       {/* Modal Editar Subcategoria */}
-      <Modal isOpen={!!editSubModal} onClose={() => setEditSubModal(null)} title="Editar Subcategoria" size="sm"
+      <Modal isOpen={!!editSubModal} onClose={() => setEditSubModal(null)} title="Editar Subcategoria" size="md"
         footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={() => setEditSubModal(null)}>Cancelar</Button><Button onClick={salvarEdicaoSub}>Salvar</Button></div>}
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div><label className="hud-label mb-1">Nome *</label><input value={editSubNome} onChange={e => setEditSubNome(e.target.value)} className={inputCls} /></div>
-          <div><label className="hud-label mb-1">Coberturas (separadas por vírgula)</label><textarea value={editSubCobs} onChange={e => setEditSubCobs(e.target.value)} rows={3} placeholder="Ex: Colisão, Roubo/Furto, Incêndio" className={inputCls + ' resize-none'} /></div>
+          <div>
+            <label className="hud-label mb-1">Coberturas{editSubCobs.length > 0 ? ` — ${editSubCobs.length}` : ''}</label>
+            <div className="border border-cyber-border rounded-xl p-3 bg-cyber-bg/40 min-h-[80px]">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {editSubCobs.map((c, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                    {c}
+                    <button type="button" onClick={() => setEditSubCobs(prev => prev.filter((_, j) => j !== i))}
+                      className="text-purple-400 hover:text-red-400 transition-colors ml-0.5 cursor-pointer">×</button>
+                  </span>
+                ))}
+              </div>
+              <input
+                value={editCobInput}
+                onChange={e => setEditCobInput(e.target.value)}
+                onKeyDown={adicionarCobEdit}
+                onBlur={() => { if (editCobInput.trim()) { setEditSubCobs(prev => [...prev, editCobInput.trim()]); setEditCobInput('') } }}
+                placeholder="Digite uma cobertura e pressione Enter..."
+                className="w-full bg-transparent text-sm text-cyber-text placeholder-cyber-dim outline-none border-t border-cyber-border/40 pt-2 mt-1"
+              />
+            </div>
+            <p className="text-[10px] text-cyber-dim mt-1">Pressione Enter ou vírgula para adicionar · Clique × para remover</p>
+          </div>
         </div>
       </Modal>
 
       {/* Modal Adicionar Subcategoria */}
-      <Modal isOpen={!!addSubModal} onClose={() => setAddSubModal(null)} title="Nova Subcategoria" size="sm"
+      <Modal isOpen={!!addSubModal} onClose={() => setAddSubModal(null)} title="Nova Subcategoria" size="md"
         footer={<div className="flex justify-end gap-3"><Button variant="secondary" onClick={() => setAddSubModal(null)}>Cancelar</Button><Button onClick={adicionarSubcategoria}>Adicionar</Button></div>}
       >
-        <div className="space-y-3">
-          <div><label className="hud-label mb-1">Nome *</label><input value={newSubNome} onChange={e => setNewSubNome(e.target.value)} placeholder="Ex: Casco, RC, Assistência..." className={inputCls} /></div>
-          <div><label className="hud-label mb-1">Coberturas (separadas por vírgula)</label><textarea value={newSubCobs} onChange={e => setNewSubCobs(e.target.value)} rows={3} placeholder="Ex: Colisão, Roubo/Furto, Incêndio" className={inputCls + ' resize-none'} /></div>
+        <div className="space-y-4">
+          <div><label className="hud-label mb-1">Nome *</label><input value={newSubNome} onChange={e => setNewSubNome(e.target.value)} placeholder="Ex: Individual, Frota, PME..." className={inputCls} /></div>
+          <div>
+            <label className="hud-label mb-1">Coberturas{newSubCobs.length > 0 ? ` — ${newSubCobs.length}` : ''}</label>
+            <div className="border border-cyber-border rounded-xl p-3 bg-cyber-bg/40 min-h-[80px]">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {newSubCobs.map((c, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                    {c}
+                    <button type="button" onClick={() => setNewSubCobs(prev => prev.filter((_, j) => j !== i))}
+                      className="text-purple-400 hover:text-red-400 transition-colors ml-0.5 cursor-pointer">×</button>
+                  </span>
+                ))}
+              </div>
+              <input
+                value={newCobInput}
+                onChange={e => setNewCobInput(e.target.value)}
+                onKeyDown={adicionarCobNew}
+                onBlur={() => { if (newCobInput.trim()) { setNewSubCobs(prev => [...prev, newCobInput.trim()]); setNewCobInput('') } }}
+                placeholder="Digite uma cobertura e pressione Enter..."
+                className="w-full bg-transparent text-sm text-cyber-text placeholder-cyber-dim outline-none border-t border-cyber-border/40 pt-2 mt-1"
+              />
+            </div>
+            <p className="text-[10px] text-cyber-dim mt-1">Pressione Enter ou vírgula para adicionar · Clique × para remover</p>
+          </div>
         </div>
       </Modal>
 
