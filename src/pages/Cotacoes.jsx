@@ -24,6 +24,7 @@ const emptyForm = {
   seguradora: '', seguradoraId: '', produto: '',
   corretora: '', corretoraId: '', produtor: '', produtorId: '',
   valorEstimado: '', premioLiquido: '', premioBruto: '',
+  validadeCotacao: new Date().toISOString().split('T')[0],
   percentualComissaoTotal: '', percentualComissaoAttenti: '75', percentualComissaoMega: '',
   coCorretagem: false, comissao: '',
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
@@ -793,6 +794,7 @@ export default function Cotacoes() {
                 ['CPF/CNPJ', selected.cpfCnpj], ['Telefone', selected.telefone], ['E-mail', selected.email],
                 ['Seguradora', selected.seguradora], ['Valor estimado', fmtMoeda(selected.valorEstimado)], ['Prêmio', fmtMoeda(selected.premioLiquido || selected.premioBruto || selected.premio)],
                 ['Comissão', `${selected.percentualComissao || 0}% · ${fmtMoeda(selected.comissao)}`], ['Responsável', selected.responsavel], ['Criada em', selected.dataCriacao],
+                ['Validade do cálculo', selected.validadeCotacao || '—'],
               ].map(([k, v]) => (
                 <div key={k}><p className="text-xs text-cyber-muted mb-0.5">{k}</p><p className="text-sm font-medium text-cyber-text">{v || '—'}</p></div>
               ))}
@@ -1008,6 +1010,7 @@ export default function Cotacoes() {
           <Section title="Valores">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FF label="Valor estimado (R$)"><input type="number" value={form.valorEstimado} onChange={e => setForm(f => ({ ...f, valorEstimado: e.target.value }))} className={inputCls} /></FF>
+              <FF label="Validade do cálculo"><input type="date" value={form.validadeCotacao} onChange={e => setForm(f => ({ ...f, validadeCotacao: e.target.value }))} className={inputCls} /></FF>
               <FF label="Prêmio líquido (R$)"><input type="number" value={form.premioLiquido} onChange={e => setForm(f => ({ ...f, premioLiquido: e.target.value }))} className={inputCls} /></FF>
               <FF label="Prêmio bruto (R$)"><input type="number" value={form.premioBruto} onChange={e => setForm(f => ({ ...f, premioBruto: e.target.value }))} className={inputCls} /></FF>
               <FF label="Comissão total (%)">
