@@ -569,7 +569,16 @@ export default function Clientes() {
               <FormField label="Grupo de Segurado">
                 <select
                   value={form.grupoSegurado}
-                  onChange={e => setForm(f => ({ ...f, grupoSegurado: e.target.value }))}
+                  onChange={e => {
+                    const g = e.target.value
+                    setForm(f => ({
+                      ...f,
+                      grupoSegurado: g,
+                      observacoes: /segurado seguro garantia|tomador seguro garantia/i.test(g) && !f.observacoes
+                        ? 'SEGURADO DE SEGURO GARANTIA'
+                        : f.observacoes,
+                    }))
+                  }}
                   className={inputCls}
                 >
                   <option value="">Selecionar...</option>

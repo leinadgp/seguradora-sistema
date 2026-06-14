@@ -425,6 +425,22 @@ ENDOSSO CARTA NYHAVN:
 TIPO DE ENDOSSO:
 Nº APÓLICE A SER ENDOSSADA:`,
   },
+  {
+    id: 'email-mega-emissao',
+    categoria: 'E-mail',
+    titulo: 'Confirmação de Emissão pelo Grupo MEGA',
+    tipoSeguro: 'Todos',
+    assunto: 'APÓLICE/PROPOSTA [SEGURADORA] [Nº APÓLICE] – [NOME COMPLETO SEGURADO] – ID PRE [XXXX]',
+    corpo: `[Responder e-mail recebido da pasta "EMITIDAS GRUPO MEGA" em financeiro@attentiseguros.com.br]
+
+Prezado(a), bom dia/boa tarde.
+
+Segue em anexo a apólice/proposta emitida para conferência.
+
+Qualquer dúvida, à disposição.
+
+[Após enviar: mover e-mail para pasta "EMITIDAS GRUPO MEGA"]`,
+  },
 ]
 
 const CATEGORIAS = ['Todos', 'WhatsApp', 'E-mail']
