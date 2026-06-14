@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Target, Shield, FileText, ClipboardList,
   Building2, DollarSign, AlertTriangle, Folder, CheckSquare,
-  RefreshCw, BarChart2, UserCog, Settings, X, ShieldCheck, FilePen, Headphones, Briefcase, MessageSquare, Inbox
+  RefreshCw, BarChart2, UserCog, Settings, X, ShieldCheck, FilePen, Headphones, Briefcase, MessageSquare
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import useResource from '../../hooks/useResource'
@@ -54,7 +54,6 @@ const groups = [
       { to: '/assistencias', icon: Headphones,   label: 'Assistências' },
       { to: '/documentos',   icon: Folder,        label: 'Documentos' },
       { to: '/modelos',      icon: MessageSquare, label: 'Modelos' },
-      { to: '/conversas',    icon: Inbox,         label: 'Conversas' },
     ],
   },
   {
@@ -71,8 +70,6 @@ const groups = [
 
 export default function Sidebar({ open, onClose }) {
   const { user } = useAuth()
-  const { data: conversas } = useResource('conversas')
-  const totalNaoLidas = conversas.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
   const displayName = user?.nome || user?.email?.split('@')[0] || '...'
   const cargoLabel = user?.cargo || perfilNomes[user?.perfil] || 'Usuário'
   const avatarInitials = initials(displayName)
@@ -139,11 +136,6 @@ export default function Sidebar({ open, onClose }) {
                             className={isActive ? 'text-cyber-cyan shrink-0' : 'shrink-0'}
                           />
                           <span className={`flex-1 ${isActive ? 'neon-text-cyan font-semibold' : ''}`}>{item.label}</span>
-                          {item.to === '/conversas' && totalNaoLidas > 0 && (
-                            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-cyber-cyan text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {totalNaoLidas > 99 ? '99+' : totalNaoLidas}
-                            </span>
-                          )}
                         </>
                       )}
                     </NavLink>

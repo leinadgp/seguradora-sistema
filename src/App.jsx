@@ -25,7 +25,6 @@ import Produtores from './pages/Produtores'
 import Corretoras from './pages/Corretoras'
 import Cotacoes from './pages/Cotacoes'
 import Modelos from './pages/Modelos'
-import Conversas from './pages/Conversas'
 import Portal from './pages/Portal'
 
 function ProtectedLayout() {
@@ -67,7 +66,6 @@ export default function App() {
               <Route path="usuarios" element={<Usuarios />} />
               <Route path="configuracoes" element={<Configuracoes />} />
               <Route path="modelos" element={<Modelos />} />
-              <Route path="conversas" element={<Conversas />} />
             </Route>
           </Routes>
         </AppProvider>
