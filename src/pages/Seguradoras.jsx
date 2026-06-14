@@ -10,7 +10,7 @@ import { validarCNPJ, validarEmail } from '../lib/validators'
 
 const segmentos = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida', 'Saúde', 'Frota', 'Rural', 'RC', 'Garantia', 'Engenharia', 'Odontológico', 'Viagem']
 
-const emptyForm = { nome: '', cnpj: '', segmentos: [], gerente: '', telefoneGerente: '', emailGerente: '', linkPortal: '', comissaoMedia: '', prazoEmissao: '', prazoPagamento: '', status: 'ativa', observacoes: '' }
+const emptyForm = { nome: '', cnpj: '', segmentos: [], gerente: '', telefoneGerente: '', emailGerente: '', linkPortal: '', comissaoMedia: '', prazoEmissao: '', prazoPagamento: '', status: 'ativa', instrucoesApolice: '', instrucoesBoleto: '', observacoes: '' }
 
 function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v || 0) }
 
@@ -132,10 +132,23 @@ export default function Seguradoras() {
             </div>
             <div>
               <p className="text-xs text-cyber-muted mb-1">Portal</p>
-              <a href={`https://${selected.linkPortal}`} target="_blank" rel="noreferrer" className="text-sm text-cyber-cyan hover:underline flex items-center gap-1">
-                {selected.linkPortal} <ExternalLink size={12} />
-              </a>
+              {selected.linkPortal ? (
+                <a href={`https://${selected.linkPortal}`} target="_blank" rel="noreferrer" className="text-sm text-cyber-cyan hover:underline flex items-center gap-1">
+                  {selected.linkPortal} <ExternalLink size={12} />
+                </a>
+              ) : <p className="text-sm text-cyber-muted">—</p>}
             </div>
+            {(selected.instrucoesApolice || selected.instrucoesBoleto) && (
+              <div className="p-3 bg-cyber-surface/50 rounded-xl space-y-2">
+                <p className="text-xs font-semibold text-cyber-muted uppercase tracking-wide">Operações no Portal</p>
+                {selected.instrucoesApolice && (
+                  <div><p className="text-[10px] text-cyber-muted mb-0.5">Retirar Apólice</p><p className="text-xs text-cyber-text font-mono">{selected.instrucoesApolice}</p></div>
+                )}
+                {selected.instrucoesBoleto && (
+                  <div><p className="text-[10px] text-cyber-muted mb-0.5">Retirar Boleto</p><p className="text-xs text-cyber-text font-mono">{selected.instrucoesBoleto}</p></div>
+                )}
+              </div>
+            )}
             {selected.observacoes && <div className="p-3 bg-cyber-surface/50 rounded-xl"><p className="text-xs text-cyber-muted mb-1">Observações</p><p className="text-sm text-cyber-text/80">{selected.observacoes}</p></div>}
           </div>
         )}
@@ -163,7 +176,7 @@ export default function Seguradoras() {
             <div><label className="hud-label mb-1">Gerente comercial</label><input value={form.gerente} onChange={e => setForm(f => ({ ...f, gerente: e.target.value }))} className={inputCls} /></div>
             <div><label className="hud-label mb-1">Telefone</label><input value={form.telefoneGerente} onChange={e => setForm(f => ({ ...f, telefoneGerente: e.target.value }))} className={inputCls} /></div>
             <div><label className="hud-label mb-1">E-mail</label><input value={form.emailGerente} onChange={e => setForm(f => ({ ...f, emailGerente: e.target.value }))} className={inputCls} /></div>
-            <div><label className="hud-label mb-1">Portal</label><input value={form.linkPortal} onChange={e => setForm(f => ({ ...f, linkPortal: e.target.value }))} className={inputCls} /></div>
+            <div><label className="hud-label mb-1">Portal (URL)</label><input value={form.linkPortal} onChange={e => setForm(f => ({ ...f, linkPortal: e.target.value }))} className={inputCls} placeholder="portal.seguradora.com.br" /></div>
             <div><label className="hud-label mb-1">Comissão média (%)</label><input type="number" value={form.comissaoMedia} onChange={e => setForm(f => ({ ...f, comissaoMedia: e.target.value }))} className={inputCls} /></div>
             <div><label className="hud-label mb-1">Prazo emissão (dias)</label><input type="number" value={form.prazoEmissao} onChange={e => setForm(f => ({ ...f, prazoEmissao: e.target.value }))} className={inputCls} /></div>
             <div><label className="hud-label mb-1">Prazo pagamento (dias)</label><input type="number" value={form.prazoPagamento} onChange={e => setForm(f => ({ ...f, prazoPagamento: e.target.value }))} className={inputCls} /></div>
@@ -174,7 +187,9 @@ export default function Seguradoras() {
               </select>
             </div>
           </div>
-          <div><label className="hud-label mb-1">Observações</label><textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={3} className={inputCls + ' resize-none'} /></div>
+          <div><label className="hud-label mb-1">Como retirar Apólice</label><input value={form.instrucoesApolice} onChange={e => setForm(f => ({ ...f, instrucoesApolice: e.target.value }))} className={inputCls} placeholder="Ex: Consultas → Apólices → CPF/CNPJ → PDF" /></div>
+          <div><label className="hud-label mb-1">Como retirar Boleto</label><input value={form.instrucoesBoleto} onChange={e => setForm(f => ({ ...f, instrucoesBoleto: e.target.value }))} className={inputCls} placeholder="Ex: Parcelas → Nome segurado → 3 pontos" /></div>
+          <div><label className="hud-label mb-1">Observações</label><textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className={inputCls + ' resize-none'} /></div>
         </div>
       </Modal>
     </div>
