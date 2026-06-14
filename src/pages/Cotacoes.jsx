@@ -30,6 +30,26 @@ const emptyForm = {
   responsavel: 'Carlos Silva', status: 'nova', observacoes: '',
 }
 
+// Canal de cotação sugerido por tipo de seguro (manual seção 5)
+const CANAL_COTACAO = {
+  'Seguro Garantia': 'ATTENTI c/ co-corretagem (POTTENCIAL, AVLA, EXCELSIOR, EZZE, TOKIO, PORTO SEGURO) | AGB (BERKLEY, DAYCOVAL, FATOR, JUNTO, SOMBRERO…) | Assessoria Garantia (ALLSEG)',
+  'Seguro Licitante': 'ATTENTI c/ co-corretagem | Assessoria AGB ou Garantia',
+  'Seguro Judicial': 'ATTENTI c/ co-corretagem | Portal direto: EXCELSIOR, EZZE, POTTENCIAL | AGB / Assessoria Garantia',
+  'Risco Engenharia': 'Assessoria AGB / Garantia | AVLA, BERKLEY, FATOR, POTTENCIAL, SOMPO, TOKIO',
+  'Fiança Locatícia': 'ATTENTI c/ co-corretagem | FIANZA (Luciana) | NYHAVN (Nathiele)',
+  'Capitalização Aluguel': 'Grupo MEGA (emissão) — enviar dados ao backoffice',
+  'Auto': 'AGGER (sistema cotador)',
+  'Frota': 'Grupo MEGA — e-mail ao backoffice',
+  'Residencial': 'AGGER (sistema cotador)',
+  'Empresarial': 'AGGER (sistema cotador)',
+  'Patrimoniais': 'AGGER (sistema cotador)',
+  'Responsabilidade Civil': 'Obras: AGB/Garantia | Profissional (MEGA): AIG, BRADESCO, PORTO SEGUROS, TOKIO',
+  'Vida': 'AGGER (Individual) | MEGA — e-mail (Global/PME) | MONGERAL | PRUDENTIAL',
+  'Saúde': 'MONGERAL | PRUDENTIAL (somente ATTENTI)',
+  'Consórcio': 'Grupo MEGA — WhatsApp ao backoffice',
+  'Equipamentos': 'Grupo MEGA — e-mail ao backoffice',
+}
+
 const _CABEC = `ENTRADA: DD/MM/202X – NOME DO CLIENTE POR (WHATSAPP OU EMAIL)
 PROT VENDA: DD/MM/202X
 PRODUTOR DO CLIENTE:
@@ -901,6 +921,9 @@ export default function Cotacoes() {
                 >
                   {getTipos(['seguro', 'saude', 'previdencia', 'consorcio']).map(t => <option key={t}>{t}</option>)}
                 </select>
+                {CANAL_COTACAO[form.tipoSeguro] && (
+                  <p className="mt-1 text-[10px] text-cyber-cyan/70 leading-relaxed">📌 {CANAL_COTACAO[form.tipoSeguro]}</p>
+                )}
               </FF>
               <FF label="Subtipo / Ramo">
                 <div className="flex flex-wrap gap-1.5 mt-1 min-h-[32px]">

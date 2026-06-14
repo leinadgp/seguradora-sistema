@@ -26,7 +26,7 @@ const FASES_FINAIS = [
 const tempCor = { quente: 'bg-cyber-red glow-red', morno: 'bg-cyber-amber', frio: 'bg-cyber-cyan' }
 // Lista mantida apenas como referência; selects usam useCatalogo()
 const tiposSeguros = ['Auto', 'Moto', 'Residencial', 'Empresarial', 'Vida Individual', 'Vida Empresarial', 'Saúde', 'Frota', 'Rural', 'Viagem']
-const origens = ['Site', 'Indicação', 'Redes Sociais', 'WhatsApp', 'Prospecção', 'Facebook Ads', 'Google Ads']
+const origens = ['WhatsApp', 'E-mail', 'SGCOR Prospect', 'Site', 'Indicação', 'Redes Sociais', 'Prospecção', 'Facebook Ads', 'Google Ads']
 
 const emptyForm = { nome: '', telefone: '', whatsapp: '', email: '', cidade: '', estado: 'SP', tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '', origem: 'Site', campanha: '', responsavel: 'Carlos Silva', status: 'novo', temperatura: 'morno', valorEstimado: '', proximaAcao: '', observacoes: '' }
 
