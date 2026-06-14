@@ -13,7 +13,7 @@ const ENTITIES = [
   'comissoes', 'sinistros', 'assistencias', 'documentos', 'tarefas',
   'produtos', 'producaoMensal', 'alertas', 'endossos', 'produtores',
   'corretoras', 'cotacoes', 'historico', 'seguros_catalogo', 'configuracoes',
-  'conversas', 'mensagens',
+  'conversas', 'mensagens', 'solicitacoes_documentos',
 ]
 
 // ─── AUTH ──────────────────────────────────────────────────────────────────
@@ -387,6 +387,23 @@ app.get('/api/conversas/:id/mensagens', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+// ─── PORTAL PÚBLICO DE DOCUMENTOS ─────────────────────────────────────────
+
+app.get('/api/portal/:token', async (req, res) => {
+  const { token } = req.params
+  const { data, error } = await supabase.from('solicitacoes_documentos').select('data').eq('id', token).single()
+  if (error || !data) return res.status(404).json({ error: 'Solicitação não encontrada.' })
+  res.json(data.data)
+})
+
+app.put('/api/portal/:token', async (req, res) => {
+  const { token } = req.params
+  const item = { ...req.body, id: token }
+  const { error } = await supabase.from('solicitacoes_documentos').upsert({ id: token, data: item })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(item)
 })
 
 // ─── CRUD GENÉRICO ─────────────────────────────────────────────────────────
