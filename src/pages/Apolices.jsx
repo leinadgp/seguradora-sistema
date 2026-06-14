@@ -108,7 +108,7 @@ export default function Apolices() {
     const cfg = configs?.find(c => c.id === 'config')
     if (!cfg?.comissoes) return ''
     const t = (tipoSeguro || '').toLowerCase()
-    const map = [['auto', 'auto'], ['automóvel', 'auto'], ['residencial', 'residencial'], ['empresarial', 'empresarial'], ['comercial', 'empresarial'], ['vida', 'vida'], ['saúde', 'saude'], ['odontológico', 'saude'], ['frota', 'frota'], ['rural', 'rural'], ['civil', 'rc'], ['viagem', 'viagem']]
+    const map = [['auto', 'auto'], ['automóvel', 'auto'], ['residencial', 'residencial'], ['empresarial', 'empresarial'], ['comercial', 'empresarial'], ['vida', 'vida'], ['saúde', 'saude'], ['odontológico', 'saude'], ['frota', 'frota'], ['rural', 'rural'], ['civil', 'rc'], ['viagem', 'viagem'], ['cons', 'consorcio']]
     for (const [k, v] of map) { if (t.includes(k)) return String(cfg.comissoes[v] ?? '') }
     return ''
   }

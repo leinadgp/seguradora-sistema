@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo } from 'react'
-import { Search, RefreshCw, CheckCircle, XCircle, Phone, FileText } from 'lucide-react'
+import { Search, RefreshCw, CheckCircle, XCircle, Phone, FileText, MessageCircle, Mail } from 'lucide-react'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
@@ -120,6 +120,11 @@ export default function Renovacoes() {
           {filtered.map(r => {
             const st = STATUS_RENOV[r.statusRenovacao]
             const isUrgente = r.diasParaVencer <= 15
+            const digits = (r.cpfCnpj || '').replace(/\D/g, '')
+            const isPJ = digits.length > 11
+            const canalIcon = isPJ
+              ? <span className="flex items-center gap-1 text-[10px] text-cyber-cyan px-2 py-0.5 rounded-full bg-cyber-cyan/10"><Mail size={10} /> E-mail</span>
+              : <span className="flex items-center gap-1 text-[10px] text-cyber-green px-2 py-0.5 rounded-full bg-cyber-green/10"><MessageCircle size={10} /> WhatsApp</span>
             return (
               <div key={r.id} className={`bg-cyber-card rounded-2xl p-4 shadow-card border transition-all duration-200 hover:shadow-card-md hover:-translate-y-0.5 ${isUrgente ? 'border-red-200' : 'border-cyber-border/40'}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -130,6 +135,7 @@ export default function Renovacoes() {
                         {r.diasParaVencer} dias
                       </span>
                       <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
+                      {canalIcon}
                     </div>
                     <p className="text-sm text-cyber-muted">{r.tipoSeguro} · {r.seguradora}</p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-cyber-muted">
