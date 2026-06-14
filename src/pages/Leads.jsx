@@ -50,6 +50,7 @@ export default function Leads() {
   const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo } = useCatalogo()
   const [expandCobs, setExpandCobs] = useState(false)
   const [dragOver, setDragOver] = useState(null)
+  const [confirmCotacao, setConfirmCotacao] = useState(null) // { lead }
   const scrollRef = useRef(null)
   const scrollState = useRef({ dragging: false, startX: 0, scrollLeft: 0 })
   const touchState = useRef({ cardId: null })
@@ -86,24 +87,51 @@ export default function Leads() {
   }
 
   async function moverLead(id, novoStatus) {
-    try {
-      const lead = leads.find(l => l.id === id)
-      if (!lead) return
+    const lead = leads.find(l => l.id === id)
+    if (!lead) return
 
+    const isFinal = FASES_FINAIS.some(f => f.key === novoStatus)
+
+    if (!isFinal) {
+      const colOrder = COLUNAS.map(c => c.key)
+      const idxNovo     = colOrder.indexOf(novoStatus)
+      const cotacaoIdx  = colOrder.indexOf('cotacao')
+      const propostaIdx = colOrder.indexOf('proposta_enviada')
+
+      // Bloqueio: tem cotação ativa e tenta voltar antes do estágio 'cotacao'
+      if (lead.cotacao_id && idxNovo < cotacaoIdx) {
+        showToast('Este lead está em cotação ativa. Acesse a pipeline de Cotações para gerenciar.', 'error')
+        return
+      }
+      // Bloqueio: está em proposta_enviada e tenta voltar antes desse estágio
+      if (lead.status === 'proposta_enviada' && idxNovo < propostaIdx) {
+        showToast('Este lead tem uma proposta ativa. Acesse a pipeline de Propostas para gerenciar.', 'error')
+        return
+      }
+      // Confirmação: movendo para 'cotacao' sem cotação vinculada → exibe modal
+      if (novoStatus === 'cotacao' && !lead.cotacao_id) {
+        setConfirmCotacao({ lead })
+        return
+      }
+    }
+
+    await executarMoverLead(lead, novoStatus)
+  }
+
+  async function executarMoverLead(lead, novoStatus) {
+    try {
       if (novoStatus === 'cotacao') {
         if (lead.cotacao_id) {
-          // Já tem cotação vinculada — só muda status
-          await update(id, { ...lead, status: novoStatus })
+          await update(lead.id, { ...lead, status: novoStatus })
           showToast('Lead movido para Em Cotação. Cotação já existente vinculada.')
-          setSelected(prev => ({ ...prev, status: novoStatus }))
+          setSelected(prev => prev ? { ...prev, status: novoStatus } : prev)
           return
         }
-        // Cria cotação automaticamente
         const numero = genNumero('COT', cotacoes)
         const cotId = Date.now().toString()
         await createCotacao({
           id: cotId, numero,
-          lead_id: id,
+          lead_id: lead.id,
           cliente: lead.nome,
           telefone: lead.telefone || '',
           whatsapp: lead.whatsapp || '',
@@ -125,15 +153,15 @@ export default function Leads() {
           corretora: '', corretoraId: '', produtor: '', produtorId: '',
           premio: '', percentualComissaoTotal: '', percentualComissaoAttenti: '75', comissao: '',
         })
-        await update(id, { ...lead, status: novoStatus, cotacao_id: cotId })
+        await update(lead.id, { ...lead, status: novoStatus, cotacao_id: cotId })
         showToast(`Cotação ${numero} criada automaticamente para ${lead.nome}!`)
-        setSelected(prev => ({ ...prev, status: novoStatus, cotacao_id: cotId }))
+        setSelected(prev => prev ? { ...prev, status: novoStatus, cotacao_id: cotId } : prev)
         return
       }
 
-      await update(id, { ...lead, status: novoStatus })
+      await update(lead.id, { ...lead, status: novoStatus })
       showToast('Status do lead atualizado!')
-      setSelected(prev => ({ ...prev, status: novoStatus }))
+      setSelected(prev => prev ? { ...prev, status: novoStatus } : prev)
     } catch {
       showToast('Erro ao atualizar status.', 'error')
     }
@@ -251,7 +279,11 @@ export default function Leads() {
                       )}
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-xs text-cyber-muted">Resp: {l.responsavel?.split(' ')[0]}</p>
-                        {l.cotacao_id && <span className="text-[10px] text-cyber-amber font-medium">Cotação vinc.</span>}
+                        {l.cotacao_id && (
+                          <span className="text-[10px] text-cyber-amber bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            📋 Cotação
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -380,6 +412,29 @@ export default function Leads() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modal: Confirmar geração de cotação */}
+      <Modal isOpen={!!confirmCotacao} onClose={() => setConfirmCotacao(null)} title="Gerar Cotação" size="sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setConfirmCotacao(null)}>Agora não</Button>
+            <Button variant="success" icon={<FileText size={14} />}
+              onClick={() => { const l = confirmCotacao.lead; setConfirmCotacao(null); executarMoverLead(l, 'cotacao') }}>
+              Gerar Cotação
+            </Button>
+          </div>
+        }
+      >
+        <div className="text-center py-3">
+          <div className="w-14 h-14 bg-cyber-cyan/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FileText size={26} className="text-cyber-cyan" />
+          </div>
+          <p className="text-sm text-cyber-muted">
+            Mover <strong className="text-cyber-text">{confirmCotacao?.lead?.nome}</strong> para{' '}
+            <strong className="text-cyber-text">"Em Cotação"</strong> e gerar a cotação automaticamente?
+          </p>
+        </div>
       </Modal>
 
       {/* Modal Novo/Edit Lead */}

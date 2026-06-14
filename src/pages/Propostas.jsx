@@ -707,7 +707,10 @@ function KanbanPropostas({ propostas, onDropStatus, onOpen }) {
                     <p className="text-xs text-cyber-muted mt-0.5">{p.tipoSeguro}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs font-bold text-cyber-text">{p.melhorValor ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.melhorValor) : '—'}</span>
-                      {p.converted_policy_id && <Badge color="green">Pólice</Badge>}
+                      <div className="flex gap-1">
+                        {(p.lead_id || p.leadId) && <span className="text-[10px] text-cyber-amber/90 bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium">🔗 Lead</span>}
+                        {p.converted_policy_id && <Badge color="green">Pólice</Badge>}
+                      </div>
                     </div>
                     <p className="text-[10px] text-cyber-muted mt-1">{p.responsavel?.split(' ')[0]}</p>
                   </div>

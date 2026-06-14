@@ -43,6 +43,7 @@ export default function Cotacoes() {
   const { data: produtores } = useResource('produtores')
   const { data: usuarios } = useResource('usuarios')
   const { data: configs } = useResource('configuracoes')
+  const { data: leads, update: updateLead } = useResource('leads')
   const { data: propostas, create: createProposta } = useResource('propostas')
   const { data: apolices } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
@@ -207,6 +208,13 @@ export default function Cotacoes() {
         observacoes: cot.observacoes || '', anexos: cot.anexos || [],
         converted_policy_id: null,
       })
+      // Avança lead para 'proposta_enviada' na pipeline de Leads
+      if (cot.lead_id) {
+        const linkedLead = leads.find(l => l.id === cot.lead_id)
+        if (linkedLead && !['proposta_enviada', 'negociacao', 'ganho'].includes(linkedLead.status)) {
+          await updateLead(cot.lead_id, { ...linkedLead, status: 'proposta_enviada' })
+        }
+      }
       const cotAtualizada = await update(cot.id, { ...cot, status: 'convertida', converted_proposal_id: id })
       await logEvento('cotacao', cot.id, 'Proposta gerada', `Proposta ${numero} criada a partir da cotação ${cot.numero}.`)
       await logEvento('proposta', id, 'Proposta criada', `Proposta ${numero} criada automaticamente a partir da cotação ${cot.numero}.`)
@@ -674,7 +682,10 @@ function KanbanCotacoes({ cotacoes, onDropStatus, onOpen }) {
                       <p className="text-xs text-cyber-muted mt-0.5">{c.tipoSeguro} · {c.seguradora || '—'}</p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs font-bold text-cyber-text">{fmtMoeda(c.premioLiquido || c.premioBruto || c.premio)}</span>
-                        {c.converted_proposal_id && <Badge color="purple">Proposta</Badge>}
+                        <div className="flex gap-1">
+                          {c.lead_id && <span className="text-[10px] text-cyber-amber/90 bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium">🔗 Lead</span>}
+                          {c.converted_proposal_id && <Badge color="purple">Proposta</Badge>}
+                        </div>
                       </div>
                     </div>
                   ))}
