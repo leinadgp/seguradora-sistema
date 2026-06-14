@@ -49,6 +49,12 @@ const DEFAULT_NOTIF = {
   whatsappAlertas: false,
 }
 
+const DEFAULT_COMISSOES = {
+  auto: 15, residencial: 14, empresarial: 16,
+  vida: 12, saude: 12, frota: 13,
+  rural: 10, rc: 14, viagem: 10,
+}
+
 export default function Configuracoes() {
   const { showToast } = useApp()
   const { user: authUser } = useAuth()
@@ -69,6 +75,7 @@ export default function Configuracoes() {
   const [aba, setAba] = useState('corretora')
   const [corretora, setCorretora] = useState(DEFAULT_CORRETORA)
   const [notif, setNotif] = useState(DEFAULT_NOTIF)
+  const [comissoes, setComissoes] = useState(DEFAULT_COMISSOES)
   const [uazapi, setUazapi] = useState({ instanceName: '', baseUrl: '', token: '', owner: '' })
   const [uazapiTestando, setUazapiTestando] = useState(false)
   const [uazapiTestResult, setUazapiTestResult] = useState(null) // null | 'ok' | 'error'
@@ -90,6 +97,7 @@ export default function Configuracoes() {
       const cfg = configs.find(c => c.id === 'config') || configs[0]
       if (cfg.corretora) setCorretora(c => ({ ...DEFAULT_CORRETORA, ...cfg.corretora }))
       if (cfg.notif) setNotif(n => ({ ...DEFAULT_NOTIF, ...cfg.notif }))
+      if (cfg.comissoes) setComissoes(c => ({ ...DEFAULT_COMISSOES, ...cfg.comissoes }))
       const uazapiCfg = configs.find(c => c.id === 'uazapi')
       if (uazapiCfg) setUazapi(u => ({ ...u, ...uazapiCfg }))
     }
@@ -198,7 +206,7 @@ export default function Configuracoes() {
       }
       return
     }
-    const payload = { id: 'config', corretora, notif }
+    const payload = { id: 'config', corretora, notif, comissoes }
     try {
       const existing = configs.find(c => c.id === 'config')
       if (existing) {
@@ -282,12 +290,13 @@ export default function Configuracoes() {
               </div>
             </div>
             <div>
-              <h3 className="font-semibold text-cyber-text mb-3">Comissão padrão</h3>
+              <h3 className="font-semibold text-cyber-text mb-1">Comissão padrão por tipo</h3>
+              <p className="text-xs text-cyber-muted mb-3">Usada como fallback quando a seguradora não tem comissão média configurada.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[['Auto', '15'], ['Residencial', '14'], ['Empresarial', '16'], ['Vida', '12'], ['Saúde', '12'], ['Frota', '13']].map(([t, v]) => (
-                  <div key={t}>
-                    <label className="hud-label mb-1">{t} (%)</label>
-                    <input type="number" defaultValue={v} className={inputCls} />
+                {[['auto','Auto'], ['residencial','Residencial'], ['empresarial','Empresarial'], ['vida','Vida'], ['saude','Saúde'], ['frota','Frota'], ['rural','Rural'], ['rc','Resp. Civil'], ['viagem','Viagem']].map(([k, l]) => (
+                  <div key={k}>
+                    <label className="hud-label mb-1">{l} (%)</label>
+                    <input type="number" step="0.1" value={comissoes[k] ?? ''} onChange={e => setComissoes(c => ({ ...c, [k]: Number(e.target.value) }))} className={inputCls} />
                   </div>
                 ))}
               </div>

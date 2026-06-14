@@ -42,6 +42,7 @@ export default function Cotacoes() {
   const { data: corretoras } = useResource('corretoras')
   const { data: produtores } = useResource('produtores')
   const { data: usuarios } = useResource('usuarios')
+  const { data: configs } = useResource('configuracoes')
   const { data: propostas, create: createProposta } = useResource('propostas')
   const { data: apolices } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
@@ -59,6 +60,17 @@ export default function Cotacoes() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const { getTipos, getSubcategorias, getCoberturasDaSelecao, getRamo, getEntrada } = useCatalogo()
   const [expandCobs, setExpandCobs] = useState(false)
+
+  function comissaoDaConfig(tipoSeguro) {
+    const cfg = configs?.find(c => c.id === 'config')
+    if (!cfg?.comissoes) return ''
+    const t = (tipoSeguro || '').toLowerCase()
+    const map = [['auto', 'auto'], ['automóvel', 'auto'], ['residencial', 'residencial'], ['empresarial', 'empresarial'], ['comercial', 'empresarial'], ['vida', 'vida'], ['saúde', 'saude'], ['odontológico', 'saude'], ['frota', 'frota'], ['rural', 'rural'], ['civil', 'rc'], ['viagem', 'viagem']]
+    for (const [k, v] of map) {
+      if (t.includes(k)) return String(cfg.comissoes[v] ?? '')
+    }
+    return ''
+  }
 
   function aplicarComissaoDoTipo(tipo, formAtual = {}) {
     const entrada = getEntrada(tipo)
@@ -89,7 +101,13 @@ export default function Cotacoes() {
   })
 
   function openNew() { setForm(emptyForm); setIsEditing(false); setShowModal(true) }
-  function openEdit(c) { setForm({ ...emptyForm, ...c }); setIsEditing(true); setShowModal(true); setShowDetalhes(false) }
+  function openEdit(c) {
+    const segId = c.seguradoraId || seguradoras.find(s => s.nome === c.seguradora)?.id || ''
+    const corrId = c.corretoraId || corretoras.find(cor => cor.nome === c.corretora)?.id || ''
+    const prodId = c.produtorId || produtores.find(p => p.nome === c.produtor)?.id || ''
+    setForm({ ...emptyForm, ...c, seguradoraId: segId, corretoraId: corrId, produtorId: prodId })
+    setIsEditing(true); setShowModal(true); setShowDetalhes(false)
+  }
   function openDetalhes(c) { setSelected(c); setShowDetalhes(true) }
 
   async function handleDelete(id) {
@@ -396,7 +414,14 @@ export default function Cotacoes() {
                   onChange={e => {
                     const tipo = e.target.value
                     setExpandCobs(false)
-                    setForm(f => aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], coberturas: [], ramo: getRamo(tipo) }))
+                    setForm(f => {
+                      const base = aplicarComissaoDoTipo(tipo, { ...f, tipoSeguro: tipo, subcategorias: [], coberturas: [], ramo: getRamo(tipo) })
+                      const cfgComissao = comissaoDaConfig(tipo)
+                      return {
+                        ...base,
+                        percentualComissaoTotal: f.seguradoraId ? f.percentualComissaoTotal : (cfgComissao || f.percentualComissaoTotal),
+                      }
+                    })
                   }}
                   className={inputCls}
                 >
@@ -455,11 +480,14 @@ export default function Cotacoes() {
               <FF label="Seguradora">
                 <select value={form.seguradoraId} onChange={e => {
                   const seg = seguradoras.find(s => s.id === e.target.value)
+                  const cfgComissao = comissaoDaConfig(form.tipoSeguro)
                   setForm(f => ({
                     ...f,
                     seguradoraId: e.target.value,
                     seguradora: seg?.nome || '',
-                    percentualComissaoTotal: seg?.comissaoMedia ? String(seg.comissaoMedia) : f.percentualComissaoTotal,
+                    percentualComissaoTotal: seg?.comissaoMedia
+                      ? String(seg.comissaoMedia)
+                      : (cfgComissao || f.percentualComissaoTotal),
                   }))
                 }} className={inputCls}>
                   <option value="">Selecione a seguradora...</option>

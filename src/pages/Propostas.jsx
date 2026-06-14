@@ -42,6 +42,8 @@ export default function Propostas() {
   const { data: propostas, create, update, remove } = useResource('propostas')
   const { data: usuarios } = useResource('usuarios')
   const { data: seguradoras } = useResource('seguradoras')
+  const { data: corretoras } = useResource('corretoras')
+  const { data: produtores } = useResource('produtores')
   const { data: cotacoes } = useResource('cotacoes')
   const { data: apolices, create: createApolice } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
@@ -94,7 +96,13 @@ export default function Propostas() {
   const perdidas = filtered.filter(p => ['recusada', 'perdida'].includes(p.status))
 
   function openNew() { setForm(emptyForm); setIsEditing(false); setAba(0); setShowModal(true) }
-  function openEdit(p) { setForm({ ...emptyForm, ...p }); setIsEditing(true); setAba(0); setShowModal(true); setShowDetalhes(false) }
+  function openEdit(p) {
+    const segId = p.seguradoraId || seguradoras.find(s => s.nome === p.seguradora)?.id || ''
+    const corrId = p.corretoraId || corretoras.find(c => c.nome === p.corretora)?.id || ''
+    const prodId = p.produtorId || produtores.find(pr => pr.nome === p.produtor)?.id || ''
+    setForm({ ...emptyForm, ...p, seguradoraId: segId, corretoraId: corrId, produtorId: prodId })
+    setIsEditing(true); setAba(0); setShowModal(true); setShowDetalhes(false)
+  }
 
   async function handleDelete(id) {
     try {
@@ -444,6 +452,12 @@ export default function Propostas() {
           <div className="space-y-3">
             <div><label className="hud-label mb-1">Cliente / Lead *</label><input value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} className={inputCls} placeholder="Nome do cliente ou lead" /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label className="hud-label mb-1">CPF/CNPJ</label><input value={form.cpfCnpj} onChange={e => setForm(f => ({ ...f, cpfCnpj: e.target.value }))} className={inputCls} placeholder="000.000.000-00" /></div>
+              <div><label className="hud-label mb-1">Telefone</label><input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} className={inputCls} placeholder="(00) 00000-0000" /></div>
+              <div><label className="hud-label mb-1">WhatsApp</label><input value={form.whatsapp} onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))} className={inputCls} placeholder="(00) 00000-0000" /></div>
+              <div><label className="hud-label mb-1">E-mail</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="hud-label mb-1">Tipo de seguro *</label>
                 <select
@@ -543,6 +557,59 @@ export default function Propostas() {
 
         {aba === 2 && (
           <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="hud-label mb-1">Seguradora principal</label>
+                <select value={form.seguradoraId} onChange={e => {
+                  const seg = seguradoras.find(s => s.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    seguradoraId: e.target.value,
+                    seguradora: seg?.nome || '',
+                    percentualComissaoTotal: seg?.comissaoMedia ? String(seg.comissaoMedia) : f.percentualComissaoTotal,
+                    seguradorasCotadas: seg?.nome ? [...new Set([...(f.seguradorasCotadas || []), seg.nome])] : f.seguradorasCotadas,
+                  }))
+                }} className={inputCls}>
+                  <option value="">Selecione...</option>
+                  {seguradoras.filter(s => s.status !== 'inativa').map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Produto / Plano</label>
+                <select value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls}>
+                  <option value="">Selecione o subtipo...</option>
+                  {getSubcategorias(form.tipoSeguro).map(s => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Corretora (co-corretagem)</label>
+                <select value={form.corretoraId} onChange={e => {
+                  const cor = corretoras.find(c => c.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    corretoraId: e.target.value,
+                    corretora: cor?.nome || '',
+                    coCorretagem: !!cor,
+                    percentualComissaoMega: cor?.percentualCocorretagem ? String(cor.percentualCocorretagem) : f.percentualComissaoMega,
+                    percentualComissaoAttenti: cor?.percentualCocorretagem
+                      ? String(100 - Number(cor.percentualCocorretagem)) : f.percentualComissaoAttenti,
+                  }))
+                }} className={inputCls}>
+                  <option value="">Sem co-corretagem</option>
+                  {corretoras.filter(c => c.status !== 'inativa').map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="hud-label mb-1">Produtor / Corretor</label>
+                <select value={form.produtorId} onChange={e => {
+                  const prod = produtores.find(p => p.id === e.target.value)
+                  setForm(f => ({ ...f, produtorId: e.target.value, produtor: prod?.nome || '' }))
+                }} className={inputCls}>
+                  <option value="">Selecione o produtor...</option>
+                  {produtores.filter(p => p.status !== 'inativo').map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+            </div>
             <div>
               <label className="text-xs font-medium text-cyber-muted mb-2 block">Seguradoras cotadas</label>
               <div className="grid grid-cols-2 gap-2 p-3 border border-cyber-border rounded-lg">
