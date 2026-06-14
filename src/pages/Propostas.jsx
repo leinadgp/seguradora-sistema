@@ -44,7 +44,7 @@ export default function Propostas() {
   const { data: seguradoras } = useResource('seguradoras')
   const { data: corretoras } = useResource('corretoras')
   const { data: produtores } = useResource('produtores')
-  const { data: cotacoes } = useResource('cotacoes')
+  const { data: cotacoes, update: updateCotacao } = useResource('cotacoes')
   const { data: apolices, create: createApolice } = useResource('apolices')
   const { data: endossos } = useResource('endossos')
   const { data: historico, refetch: refetchHist } = useResource('historico')
@@ -188,6 +188,13 @@ export default function Propostas() {
       await logEvento('proposta', prop.id, 'Pólice gerada', `Pólice ${numero} criada a partir da proposta ${prop.numero || ''}.`)
       await logEvento('apolice', id, 'Pólice criada', `Pólice ${numero} criada automaticamente a partir da proposta ${prop.numero || ''}.`)
       if (prop.quote_id) await logEvento('cotacao', prop.quote_id, 'Pólice gerada', `Pólice ${numero} emitida (via proposta ${prop.numero || ''}).`)
+      // Fecha cotação vinculada (sai da pipeline de Cotações)
+      if (prop.quote_id) {
+        const linkedCot = cotacoes.find(c => c.id === prop.quote_id)
+        if (linkedCot && linkedCot.status !== 'convertida') {
+          await updateCotacao(prop.quote_id, { ...linkedCot, status: 'convertida' })
+        }
+      }
       // Atualiza lead vinculado para 'ganho'
       const leadId = prop.lead_id || prop.leadId
       if (leadId) {

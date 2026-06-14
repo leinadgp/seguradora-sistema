@@ -215,7 +215,8 @@ export default function Cotacoes() {
           await updateLead(cot.lead_id, { ...linkedLead, status: 'proposta_enviada' })
         }
       }
-      const cotAtualizada = await update(cot.id, { ...cot, status: 'convertida', converted_proposal_id: id })
+      // Cotação permanece em 'aprovada' até a apólice ser gerada (gerarPolice marca como convertida)
+      const cotAtualizada = await update(cot.id, { ...cot, converted_proposal_id: id })
       await logEvento('cotacao', cot.id, 'Proposta gerada', `Proposta ${numero} criada a partir da cotação ${cot.numero}.`)
       await logEvento('proposta', id, 'Proposta criada', `Proposta ${numero} criada automaticamente a partir da cotação ${cot.numero}.`)
       refetchHist()

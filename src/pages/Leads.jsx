@@ -16,8 +16,6 @@ const COLUNAS = [
   { key: 'primeiro_contato', label: '1º Contato', cor: 'bg-cyber-cyan/10 text-cyber-cyan' },
   { key: 'qualificacao', label: 'Qualificação', cor: 'bg-cyber-purple/10 text-cyber-purple' },
   { key: 'cotacao', label: 'Em Cotação', cor: 'bg-cyber-amber/10 text-cyber-amber' },
-  { key: 'proposta_enviada', label: 'Proposta Enviada', cor: 'bg-cyber-amber/10 text-cyber-amber' },
-  { key: 'negociacao', label: 'Negociação', cor: 'bg-cyber-pink/10 text-cyber-pink' },
 ]
 
 const FASES_FINAIS = [
@@ -94,18 +92,17 @@ export default function Leads() {
 
     if (!isFinal) {
       const colOrder = COLUNAS.map(c => c.key)
-      const idxNovo     = colOrder.indexOf(novoStatus)
-      const cotacaoIdx  = colOrder.indexOf('cotacao')
-      const propostaIdx = colOrder.indexOf('proposta_enviada')
+      const idxNovo    = colOrder.indexOf(novoStatus)
+      const cotacaoIdx = colOrder.indexOf('cotacao')
 
+      // Bloqueio: lead além das colunas ativas (gerou proposta) — não permite voltar ao pipeline
+      if (!colOrder.includes(lead.status)) {
+        showToast('Este lead já gerou uma proposta. Acesse a pipeline de Propostas para gerenciar.', 'error')
+        return
+      }
       // Bloqueio: tem cotação ativa e tenta voltar antes do estágio 'cotacao'
       if (lead.cotacao_id && idxNovo < cotacaoIdx) {
         showToast('Este lead está em cotação ativa. Acesse a pipeline de Cotações para gerenciar.', 'error')
-        return
-      }
-      // Bloqueio: está em proposta_enviada e tenta voltar antes desse estágio
-      if (lead.status === 'proposta_enviada' && idxNovo < propostaIdx) {
-        showToast('Este lead tem uma proposta ativa. Acesse a pipeline de Propostas para gerenciar.', 'error')
         return
       }
       // Confirmação: movendo para 'cotacao' sem cotação vinculada → exibe modal
