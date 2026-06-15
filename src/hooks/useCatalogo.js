@@ -133,3 +133,5 @@ export function useCatalogo() {
     refetch,
   }
 }
+
+export default useCatalogo
