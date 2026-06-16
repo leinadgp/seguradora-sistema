@@ -21,7 +21,7 @@ import SolicitarDocumentosModal from '../components/ui/SolicitarDocumentosModal'
 const emptyForm = {
   cliente: '', cpfCnpj: '', telefone: '', whatsapp: '', email: '',
   tipoSeguro: 'Auto', subcategorias: [], coberturas: [], ramo: '',
-  seguradora: '', seguradoraId: '', produto: '',
+  seguradorasCotadas: [], seguradora: '', seguradoraId: '', produto: '',
   corretora: '', corretoraId: '', produtor: '', produtorId: '',
   valorEstimado: '', premioLiquido: '', premioBruto: '',
   validadeCotacao: new Date().toISOString().split('T')[0],
@@ -532,6 +532,19 @@ export default function Cotacoes() {
     }
   }
 
+  function autoCarregarSeguradoras(tipo) {
+    return seguradoras
+      .filter(s => s.status !== 'inativa' && (s.segmentos || []).includes(tipo))
+      .map(s => ({
+        seguradoraId: s.id,
+        seguradora: s.nome,
+        premioLiquido: '',
+        premioBruto: '',
+        percentualComissao: s.comissaoMedia ? String(s.comissaoMedia) : '',
+        selecionada: false,
+      }))
+  }
+
   // Auto-abrir detalhe via ?focus=<id>
   useEffect(() => {
     const focus = searchParams.get('focus')
@@ -549,12 +562,21 @@ export default function Cotacoes() {
     return matchSearch && matchStatus
   })
 
-  function openNew() { setForm(emptyForm); setIsEditing(false); setShowModal(true) }
+  function openNew() {
+    const tipo = emptyForm.tipoSeguro
+    setForm({ ...emptyForm, seguradorasCotadas: autoCarregarSeguradoras(tipo) })
+    setIsEditing(false); setShowModal(true)
+  }
   function openEdit(c) {
     const segId = c.seguradoraId || seguradoras.find(s => s.nome === c.seguradora)?.id || ''
     const corrId = c.corretoraId || corretoras.find(cor => cor.nome === c.corretora)?.id || ''
     const prodId = c.produtorId || produtores.find(p => p.nome === c.produtor)?.id || ''
-    setForm({ ...emptyForm, ...c, seguradoraId: segId, corretoraId: corrId, produtorId: prodId })
+    const segCotadas = c.seguradorasCotadas?.length
+      ? c.seguradorasCotadas
+      : c.seguradora
+        ? [{ seguradoraId: segId, seguradora: c.seguradora, premioLiquido: c.premioLiquido || '', premioBruto: c.premioBruto || '', percentualComissao: c.percentualComissaoTotal || '', selecionada: true }]
+        : autoCarregarSeguradoras(c.tipoSeguro || emptyForm.tipoSeguro)
+    setForm({ ...emptyForm, ...c, seguradoraId: segId, corretoraId: corrId, produtorId: prodId, seguradorasCotadas: segCotadas })
     setIsEditing(true); setShowModal(true); setShowDetalhes(false)
   }
   function openDetalhes(c) { setSelected(c); setShowDetalhes(true) }
@@ -583,21 +605,30 @@ export default function Cotacoes() {
       const total = parseFloat(form.percentualComissaoAttenti || 0) + parseFloat(form.percentualComissaoMega || 0)
       if (Math.abs(total - 100) > 0.01) { showToast(`Co-corretagem: ${total.toFixed(1)}% — ATTENTI + MEGA devem somar 100%.`, 'error'); return }
     }
-    const premio = form.premioLiquido || form.premioBruto || 0
-    const comissao = recalcComissao(premio, form.percentualComissaoAttenti)
+    const winner = form.seguradorasCotadas?.find(s => s.selecionada) || form.seguradorasCotadas?.[0]
+    const extraWinner = winner ? {
+      seguradora: winner.seguradora,
+      seguradoraId: winner.seguradoraId,
+      premioLiquido: winner.premioLiquido || form.premioLiquido,
+      premioBruto: winner.premioBruto || form.premioBruto,
+      percentualComissaoTotal: winner.percentualComissao || form.percentualComissaoTotal,
+    } : {}
+    const formFinal = { ...form, ...extraWinner }
+    const premio = formFinal.premioLiquido || formFinal.premioBruto || 0
+    const comissao = recalcComissao(premio, formFinal.percentualComissaoAttenti)
     try {
       if (isEditing) {
-        const updated = await update(selected.id, { ...selected, ...form, comissao })
+        const updated = await update(selected.id, { ...selected, ...formFinal, comissao })
         await logEvento('cotacao', selected.id, 'Cotação atualizada', `Dados da cotação ${selected.numero} atualizados.`)
         showToast('Cotação atualizada!')
         if (selected?.id) setSelected(updated)
       } else {
         const numero = genNumero('COT', cotacoes)
         const novo = await create({
-          ...form, comissao, id: Date.now().toString(), numero,
+          ...formFinal, comissao, id: Date.now().toString(), numero,
           dataCriacao: todayISO(), converted_proposal_id: null, anexos: [],
         })
-        await logEvento('cotacao', novo.id, 'Cotação criada', `Cotação ${numero} criada para ${form.cliente} (${form.tipoSeguro}).`)
+        await logEvento('cotacao', novo.id, 'Cotação criada', `Cotação ${numero} criada para ${formFinal.cliente} (${formFinal.tipoSeguro}).`)
         showToast(`Cotação ${numero} criada!`)
       }
       refetchHist()
@@ -644,7 +675,7 @@ export default function Cotacoes() {
         seguradora: cot.seguradora, seguradoraId: cot.seguradoraId || '', produto: cot.produto,
         corretora: cot.corretora || '', corretoraId: cot.corretoraId || '',
         produtor: cot.produtor || '', produtorId: cot.produtorId || '',
-        seguradorasCotadas: cot.seguradora ? [cot.seguradora] : [],
+        seguradorasCotadas: cot.seguradorasCotadas?.map(s => s.seguradora).filter(Boolean) || (cot.seguradora ? [cot.seguradora] : []),
         premio: cot.premioLiquido || cot.premioBruto || cot.premio, melhorValor: cot.premioLiquido || cot.premioBruto || cot.premio, valorApresentado: cot.premioLiquido || cot.premioBruto || cot.premio,
         comissao: cot.comissao,
         percentualComissao: cot.percentualComissaoTotal || cot.percentualComissaoAttenti || cot.percentualComissao || '',
@@ -833,6 +864,37 @@ export default function Cotacoes() {
                 <div key={k}><p className="text-xs text-cyber-muted mb-0.5">{k}</p><p className="text-sm font-medium text-cyber-text">{v || '—'}</p></div>
               ))}
             </div>
+            {selected.seguradorasCotadas?.length > 0 && (
+              <div>
+                <p className="hud-label mb-2">Seguradoras Cotadas</p>
+                <div className="border border-cyber-border/40 rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-cyber-surface/60 border-b border-cyber-border/40">
+                        <th className="text-left px-3 py-2 text-cyber-muted font-medium">Seguradora</th>
+                        <th className="text-left px-3 py-2 text-cyber-muted font-medium">Prêm. Líq.</th>
+                        <th className="text-left px-3 py-2 text-cyber-muted font-medium">Prêm. Bruto</th>
+                        <th className="text-left px-3 py-2 text-cyber-muted font-medium">Com%</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-cyber-border/20">
+                      {selected.seguradorasCotadas.map((seg, i) => (
+                        <tr key={i} className={seg.selecionada ? 'bg-cyber-cyan/5' : ''}>
+                          <td className="px-3 py-2 font-medium text-cyber-text flex items-center gap-1.5">
+                            {seg.selecionada && <span className="text-cyber-amber text-xs">★</span>}
+                            {seg.seguradora}
+                          </td>
+                          <td className="px-3 py-2 text-cyber-text">{seg.premioLiquido ? fmtMoeda(seg.premioLiquido) : '—'}</td>
+                          <td className="px-3 py-2 text-cyber-text">{seg.premioBruto ? fmtMoeda(seg.premioBruto) : '—'}</td>
+                          <td className="px-3 py-2 text-cyber-text">{seg.percentualComissao ? `${seg.percentualComissao}%` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {selected.observacoes && <div className="p-3 bg-cyber-surface/60 rounded-xl"><p className="text-xs text-cyber-muted mb-1">Observações</p><p className="text-sm text-cyber-text/80">{selected.observacoes}</p></div>}
 
             {/* Documentos do Portal */}
@@ -928,6 +990,8 @@ export default function Cotacoes() {
                       return {
                         ...base,
                         percentualComissaoTotal: f.seguradoraId ? f.percentualComissaoTotal : (cfgComissao || f.percentualComissaoTotal),
+                        seguradorasCotadas: autoCarregarSeguradoras(tipo),
+                        seguradora: '', seguradoraId: '',
                       }
                     })
                   }}
@@ -988,22 +1052,70 @@ export default function Cotacoes() {
                   </FF>
                 )
               })()}
-              <FF label="Seguradora">
-                <select value={form.seguradoraId} onChange={e => {
-                  const seg = seguradoras.find(s => s.id === e.target.value)
-                  const cfgComissao = comissaoDaConfig(form.tipoSeguro)
-                  setForm(f => ({
-                    ...f,
-                    seguradoraId: e.target.value,
-                    seguradora: seg?.nome || '',
-                    percentualComissaoTotal: seg?.comissaoMedia
-                      ? String(seg.comissaoMedia)
-                      : (cfgComissao || f.percentualComissaoTotal),
-                  }))
-                }} className={inputCls}>
-                  <option value="">Selecione a seguradora...</option>
-                  {seguradoras.filter(s => s.status !== 'inativa').map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                </select>
+              <FF label={<>Seguradoras para Cotar <span className="text-cyber-cyan/60 font-normal normal-case">(carregadas pelo tipo de seguro)</span></>} span>
+                {(form.seguradorasCotadas || []).length === 0 ? (
+                  <p className="text-xs text-cyber-muted py-2 italic">Nenhuma seguradora encontrada para o tipo "{form.tipoSeguro}". Verifique os segmentos cadastrados nas seguradoras.</p>
+                ) : (
+                  <div className="border border-cyber-border/40 rounded-xl overflow-hidden mt-1">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-cyber-surface/60 border-b border-cyber-border/40">
+                          <th className="text-left px-3 py-2 text-cyber-muted font-medium">Seguradora</th>
+                          <th className="text-left px-3 py-2 text-cyber-muted font-medium w-28">Prêm. Líq.</th>
+                          <th className="text-left px-3 py-2 text-cyber-muted font-medium w-28">Prêm. Bruto</th>
+                          <th className="text-left px-3 py-2 text-cyber-muted font-medium w-20">Com%</th>
+                          <th className="px-3 py-2 text-cyber-muted font-medium text-center w-16">Escolha</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cyber-border/20">
+                        {(form.seguradorasCotadas || []).map((seg, i) => (
+                          <tr key={seg.seguradoraId} className={seg.selecionada ? 'bg-cyber-cyan/5' : 'hover:bg-cyber-surface/30'}>
+                            <td className="px-3 py-2 font-medium text-cyber-text">{seg.seguradora}</td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" value={seg.premioLiquido}
+                                onChange={e => setForm(f => { const arr = [...f.seguradorasCotadas]; arr[i] = { ...arr[i], premioLiquido: e.target.value }; return { ...f, seguradorasCotadas: arr } })}
+                                className={inputCls + ' py-1 text-xs'} placeholder="R$" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" value={seg.premioBruto}
+                                onChange={e => setForm(f => { const arr = [...f.seguradorasCotadas]; arr[i] = { ...arr[i], premioBruto: e.target.value }; return { ...f, seguradorasCotadas: arr } })}
+                                className={inputCls + ' py-1 text-xs'} placeholder="R$" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" step="0.01" value={seg.percentualComissao}
+                                onChange={e => setForm(f => { const arr = [...f.seguradorasCotadas]; arr[i] = { ...arr[i], percentualComissao: e.target.value }; return { ...f, seguradorasCotadas: arr } })}
+                                className={inputCls + ' py-1 text-xs'} placeholder="%" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button type="button"
+                                onClick={() => setForm(f => {
+                                  const arr = f.seguradorasCotadas.map((s, j) => ({ ...s, selecionada: j === i }))
+                                  const w = arr[i]
+                                  return {
+                                    ...f,
+                                    seguradorasCotadas: arr,
+                                    seguradora: w.seguradora,
+                                    seguradoraId: w.seguradoraId,
+                                    premioLiquido: w.premioLiquido || f.premioLiquido,
+                                    premioBruto: w.premioBruto || f.premioBruto,
+                                    percentualComissaoTotal: w.percentualComissao || f.percentualComissaoTotal,
+                                  }
+                                })}
+                                className={`text-lg leading-none transition-colors ${seg.selecionada ? 'text-cyber-amber' : 'text-cyber-border hover:text-cyber-amber/60'}`}
+                                title="Marcar como seguradora escolhida"
+                              >★</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(form.seguradorasCotadas || []).some(s => s.selecionada) && (
+                      <div className="px-3 py-1.5 bg-cyber-amber/5 border-t border-cyber-border/30 text-[10px] text-cyber-amber/80">
+                        ★ Escolhida: {(form.seguradorasCotadas || []).find(s => s.selecionada)?.seguradora}
+                      </div>
+                    )}
+                  </div>
+                )}
               </FF>
               <FF label="Produto / Plano">
                 <select value={form.produto} onChange={e => setForm(f => ({ ...f, produto: e.target.value }))} className={inputCls}>
@@ -1228,6 +1340,7 @@ function KanbanCotacoes({ cotacoes, onDropStatus, onOpen, solicitacoes = [] }) {
                         <span className="text-xs font-bold text-cyber-text">{fmtMoeda(c.premioLiquido || c.premioBruto || c.premio)}</span>
                         <div className="flex gap-1 flex-wrap justify-end">
                           {c.lead_id && <span className="text-[10px] text-cyber-amber/90 bg-cyber-amber/10 px-1.5 py-0.5 rounded font-medium">🔗 Lead</span>}
+                          {c.seguradorasCotadas?.length > 1 && <span className="text-[10px] text-cyber-cyan/90 bg-cyber-cyan/10 px-1.5 py-0.5 rounded font-medium">{c.seguradorasCotadas.length} seg.</span>}
                           {c.converted_proposal_id && <Badge color="purple">Proposta</Badge>}
                           {(() => {
                             const sol = solicitacoes.find(s => s.origemId === c.id)
